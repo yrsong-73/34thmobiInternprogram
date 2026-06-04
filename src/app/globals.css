@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --mobi-orange: #FF6B2B;
+  --mobi-orange-light: #FFF0EA;
+  --mobi-orange-border: #FFCFB8;
+  --mobi-dark: #1A1A2E;
+  --mobi-navy: #1B2C56;
+  --bg-main: #F7F6F2;
+  --bg-card: #FFFFFF;
+  --text-primary: #1A1A2E;
+  --text-secondary: #5A5A72;
+  --text-muted: #9898AA;
+  --border: #E8E6E0;
+  --border-strong: #CFCDC5;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.10);
+  /* 강의 타입 색상 */
+  --online-color: #3B82F6;
+  --offline-color: #059669;
+  --self-color: #8B5CF6;
+  --task-color: #F59E0B;
+  --exam-color: #E85D75;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+/* ── 카드 ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ── 토스트 ── */
+#toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1A1A2E;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+  z-index: 9999;
+  white-space: nowrap;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── 강의 타입 배지 ── */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.type-online  { background: rgba(59,130,246,0.1);  color: var(--online-color);  border: 1px solid rgba(59,130,246,0.25); }
+.type-offline { background: rgba(5,150,105,0.1);   color: var(--offline-color); border: 1px solid rgba(5,150,105,0.25); }
+.type-self    { background: rgba(139,92,246,0.1);  color: var(--self-color);    border: 1px solid rgba(139,92,246,0.25); }
+.type-task    { background: rgba(245,158,11,0.1);  color: var(--task-color);    border: 1px solid rgba(245,158,11,0.25); }
+.type-exam    { background: rgba(232,93,117,0.1);  color: var(--exam-color);    border: 1px solid rgba(232,93,117,0.25); }
+.type-lunch   { background: rgba(156,163,175,0.1); color: #6B7280;              border: 1px solid rgba(156,163,175,0.25); }

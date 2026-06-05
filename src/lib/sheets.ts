@@ -152,7 +152,25 @@ export async function addRecord(data: Omit<InternRecord, 'rowIndex'>): Promise<v
 }
 
 export async function deleteRecord(rowIndex: number): Promise<void> {
-  await clearRow('records', rowIndex)
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'records')
+  if (!sheet || sheet.properties?.sheetId == null) throw new Error('records 시트를 찾을 수 없습니다')
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId: sheet.properties.sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex - 1, // 0-based
+            endIndex: rowIndex,        // exclusive
+          },
+        },
+      }],
+    },
+  })
 }
 
 // ──────────────────────────────────────────────

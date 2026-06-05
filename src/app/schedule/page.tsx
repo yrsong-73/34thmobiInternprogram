@@ -405,6 +405,21 @@ export default function SchedulePage() {
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
 
+  // ── 미리보기 모드 (CO1 전용) ──────────────────────────────
+  const [previewMode, setPreviewMode]             = useState<'off' | 'member' | 'intern'>('off')
+  const [previewInternName, setPreviewInternName] = useState('')
+  const [previewCompletedRows, setPreviewCompletedRows] = useState<Set<number>>(new Set())
+  const [previewSubmissionsMap, setPreviewSubmissionsMap] = useState<Record<number, string>>({})
+  const [previewInternsList, setPreviewInternsList] = useState<{ name: string; job: string; type: string }[]>([])
+
+  // 파생: 실제 렌더링에 사용하는 effective 값
+  const internPreviewActive = previewMode === 'intern' && !!previewInternName
+  const effectiveIsCO1      = isCO1 && previewMode === 'off'
+  const effectiveIsIntern   = isIntern || internPreviewActive
+  const effectiveCanCheck   = effectiveIsCO1 || effectiveIsIntern
+  const effectiveCompleted  = internPreviewActive ? previewCompletedRows : completedRows
+  const effectiveSubs       = internPreviewActive ? previewSubmissionsMap : submissionsMap
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
   }, [status, router])
@@ -425,6 +440,29 @@ export default function SchedulePage() {
   }, [])
 
   useEffect(() => { if (status === 'authenticated') fetchAll() }, [status, fetchAll])
+
+  // CO1 전용: 인턴 목록 로드 (미리보기 드롭다운용)
+  useEffect(() => {
+    if (!isCO1) return
+    fetch('/api/interns').then(r => r.json()).then(d => setPreviewInternsList(d.interns ?? [])).catch(() => {})
+  }, [isCO1])
+
+  // 인턴 선택 시 해당 인턴의 완료 현황 로드
+  useEffect(() => {
+    if (!previewInternName) { setPreviewCompletedRows(new Set()); setPreviewSubmissionsMap({}); return }
+    fetch(`/api/completions?viewAsName=${encodeURIComponent(previewInternName)}`)
+      .then(r => r.json())
+      .then(data => {
+        setPreviewCompletedRows(new Set(data.indices ?? []))
+        const map: Record<number, string> = {}
+        Object.entries(data.submissions ?? {}).forEach(([k, v]) => { map[Number(k)] = v as string })
+        setPreviewSubmissionsMap(map)
+        // 인턴 직무 탭 자동 선택
+        const intern = previewInternsList.find(i => i.name === previewInternName)
+        if (intern) setCurrentJob(intern.type)
+      })
+      .catch(() => {})
+  }, [previewInternName, previewInternsList])
 
   // 내 교육 완료 목록 + 과제 제출 URL 로드
   useEffect(() => {
@@ -471,6 +509,7 @@ export default function SchedulePage() {
   // 일반 체크박스 토글 (task 제외)
   async function toggleComplete(rowIndex: number, e: { stopPropagation(): void }) {
     e.stopPropagation()
+    if (previewMode !== 'off') return
     const wasChecked = completedRows.has(rowIndex)
     setCompletedRows(prev => {
       const next = new Set(prev)
@@ -496,6 +535,7 @@ export default function SchedulePage() {
 
   // 과제 URL 제출
   async function handleTaskSubmit(rowIndex: number, url: string) {
+    if (previewMode !== 'off') return
     try {
       const res = await fetch('/api/completions', {
         method: 'POST',
@@ -555,12 +595,65 @@ export default function SchedulePage() {
             </a>
           )}
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>· 교육 자료는 Google Drive에서 확인하세요</span>
-          {isCO1 && (
+          {isCO1 && previewMode === 'off' && (
             <span style={{ marginLeft: 'auto', background: 'rgba(255,107,43,0.2)', border: '1px solid rgba(255,107,43,0.4)', color: '#FF9469', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px' }}>
               ✏️ CO1 편집 모드 — 강의 셀 클릭 시 수정
             </span>
           )}
+          {isCO1 && previewMode !== 'off' && (
+            <span style={{ marginLeft: 'auto', background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', color: '#818CF8', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px' }}>
+              👁️ {previewMode === 'member' ? '멤버' : (previewInternName || '인턴')} 시점 미리보기 — 읽기 전용
+            </span>
+          )}
         </div>
+
+        {/* CO1 미리보기 모드 전환 바 */}
+        {isCO1 && (
+          <div style={{ background: '#F3F4F6', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '2px' }}>미리보기</span>
+            {(['off', 'member', 'intern'] as const).map(mode => {
+              const labels = { off: 'CO1 기본', member: '멤버로 보기', intern: '인턴으로 보기' }
+              const active = previewMode === mode
+              return (
+                <button
+                  key={mode}
+                  onClick={() => { setPreviewMode(mode); if (mode !== 'intern') setPreviewInternName('') }}
+                  style={{
+                    padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                    border: active ? 'none' : '1.5px solid var(--border)',
+                    background: active ? 'var(--mobi-dark)' : '#fff',
+                    color: active ? '#fff' : 'var(--text-secondary)',
+                  }}
+                >
+                  {labels[mode]}
+                </button>
+              )
+            })}
+            {previewMode === 'intern' && (
+              <select
+                value={previewInternName}
+                onChange={e => setPreviewInternName(e.target.value)}
+                style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontFamily: 'inherit', color: 'var(--text-primary)', background: '#fff', cursor: 'pointer' }}
+              >
+                <option value="">-- 인턴 선택 --</option>
+                {previewInternsList.map(i => (
+                  <option key={i.name} value={i.name}>{i.name} ({i.job})</option>
+                ))}
+              </select>
+            )}
+            {internPreviewActive && (
+              <span style={{ fontSize: '11px', color: 'var(--mobi-orange)', fontWeight: 600, marginLeft: '4px' }}>
+                👁️ {previewInternName}의 시점으로 보는 중
+              </span>
+            )}
+            {previewMode === 'member' && (
+              <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, marginLeft: '4px' }}>
+                👁️ 멤버 시점으로 보는 중
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           {JOB_TABS.map(tab => (
@@ -602,7 +695,7 @@ export default function SchedulePage() {
                   <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', fontWeight: 500 }}>{day.day_label}</div>
                   <div style={{ color: '#fff', fontSize: '13px', fontWeight: 700, marginTop: '1px' }}>{day.date_label}</div>
                   <div style={{ marginTop: '4px', display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {isCO1 && (
+                    {effectiveIsCO1 && (
                       <button
                         onClick={() => setEditRow({ isNew: true, ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label, day.lectures.length + 1) })}
                         style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', color: 'rgba(255,255,255,0.8)', fontSize: '9px', fontWeight: 600, padding: '2px 7px', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -674,11 +767,11 @@ export default function SchedulePage() {
                       alignItems: 'center', justifyContent: 'center',
                       zIndex: 4, margin: '2px 3px',
                       gap: '2px',
-                      cursor: isCO1 ? 'pointer' : 'default',
+                      cursor: effectiveIsCO1 ? 'pointer' : 'default',
                       boxSizing: 'border-box' as const,
                     }}
                     onClick={() => {
-                      if (!isCO1) return
+                      if (!effectiveIsCO1) return
                       if (lunchLec) {
                         setEditRow(lunchLec)
                       } else {
@@ -716,9 +809,9 @@ export default function SchedulePage() {
                     const bg           = TYPE_BG[lec.type]    || '#F9FAFB'
                     const borderColor  = color + '88'
                     const badgeBg      = bg
-                    const isCompleted  = lec.rowIndex !== undefined && completedRows.has(lec.rowIndex)
+                    const isCompleted  = lec.rowIndex !== undefined && effectiveCompleted.has(lec.rowIndex)
                     const isTask       = lec.type === 'task'
-                    const submittedUrl = lec.rowIndex !== undefined ? submissionsMap[lec.rowIndex] : undefined
+                    const submittedUrl = lec.rowIndex !== undefined ? effectiveSubs[lec.rowIndex] : undefined
 
                     return (
                       <div
@@ -735,14 +828,14 @@ export default function SchedulePage() {
                           zIndex: 3,
                           overflow: 'hidden',
                           alignSelf: 'stretch',
-                          cursor: isCO1 ? 'pointer' : 'default',
+                          cursor: effectiveIsCO1 ? 'pointer' : 'default',
                           opacity: isCompleted ? 0.65 : 1,
                           position: 'relative' as const,
                           transition: 'opacity 0.2s',
                           display: 'flex',
                           flexDirection: 'column' as const,
                         }}
-                        onClick={() => { if (isCO1) setEditRow(lec) }}
+                        onClick={() => { if (effectiveIsCO1) setEditRow(lec) }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '3px', flexWrap: 'wrap' }}>
                           <span style={{
@@ -765,15 +858,16 @@ export default function SchedulePage() {
                             )}
                             <span style={{ fontSize: '11px', color: '#000', fontWeight: 600 }}>{lec.duration}</span>
                           </div>
-                          {canCheck && lec.rowIndex !== undefined && (
+                          {effectiveCanCheck && lec.rowIndex !== undefined && (
 
                             <input
                               type="checkbox"
                               checked={isCompleted}
                               onChange={e => { e.stopPropagation(); toggleComplete(lec.rowIndex!, e) }}
                               onClick={e => e.stopPropagation()}
-                              title="교육 완료 체크"
-                              style={{ width: '13px', height: '13px', cursor: 'pointer', accentColor: color, flexShrink: 0 }}
+                              disabled={previewMode !== 'off'}
+                              title={previewMode !== 'off' ? '미리보기 모드 (읽기 전용)' : '교육 완료 체크'}
+                              style={{ width: '13px', height: '13px', cursor: previewMode === 'off' ? 'pointer' : 'not-allowed', accentColor: color, flexShrink: 0, opacity: previewMode !== 'off' ? 0.6 : 1 }}
                             />
                           )}
                         </div>
@@ -819,7 +913,7 @@ export default function SchedulePage() {
 
 
                         {/* Intern: task 타입 제출 영역 */}
-                        {isIntern && isTask && lec.rowIndex !== undefined && (
+                        {effectiveIsIntern && isTask && lec.rowIndex !== undefined && (
                           <div style={{ marginTop: 'auto', paddingTop: '4px' }} onClick={e => e.stopPropagation()}>
                             {submittedUrl ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -827,13 +921,15 @@ export default function SchedulePage() {
                                   style={{ fontSize: '9.5px', fontWeight: 700, color: '#059669', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                   ✅ 제출됨
                                 </a>
-                                <button
-                                  onClick={() => setSubmitTarget(lec)}
-                                  style={{ fontSize: '9px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontFamily: 'inherit', textDecoration: 'underline' }}>
-                                  수정
-                                </button>
+                                {previewMode === 'off' && (
+                                  <button
+                                    onClick={() => setSubmitTarget(lec)}
+                                    style={{ fontSize: '9px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontFamily: 'inherit', textDecoration: 'underline' }}>
+                                    수정
+                                  </button>
+                                )}
                               </div>
-                            ) : (
+                            ) : previewMode === 'off' ? (
                               <button
                                 onClick={() => setSubmitTarget(lec)}
                                 style={{
@@ -845,6 +941,8 @@ export default function SchedulePage() {
                                 }}>
                                 📎 제출하기
                               </button>
+                            ) : (
+                              <span style={{ fontSize: '9.5px', color: '#9CA3AF', fontStyle: 'italic' }}>미제출</span>
                             )}
                           </div>
                         )}
@@ -874,7 +972,7 @@ export default function SchedulePage() {
               </div>
               {dayGroups.map(day => {
                 const evalRowIndex = 10000 + day.day_num
-                const isEvalDone = completedRows.has(evalRowIndex)
+                const isEvalDone = effectiveCompleted.has(evalRowIndex)
                 const taskLecs = day.lectures.filter(l => l.type === 'task' && l.link_urls.length > 0 && l.link_urls[0])
                 return (
                   <div key={day.day_num} style={{
@@ -884,13 +982,15 @@ export default function SchedulePage() {
                   }}>
                     {/* 강의평가 */}
                     {day.eval_label && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: canCheck ? 'pointer' : 'default' }}>
-                        {canCheck && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: effectiveCanCheck && previewMode === 'off' ? 'pointer' : 'default' }}>
+                        {effectiveCanCheck && (
                           <input
                             type="checkbox"
                             checked={isEvalDone}
                             onChange={e => toggleComplete(evalRowIndex, e)}
-                            style={{ width: '13px', height: '13px', cursor: 'pointer', accentColor: 'var(--mobi-orange)', flexShrink: 0 }}
+                            disabled={previewMode !== 'off'}
+                            title={previewMode !== 'off' ? '미리보기 모드 (읽기 전용)' : undefined}
+                            style={{ width: '13px', height: '13px', cursor: previewMode === 'off' ? 'pointer' : 'not-allowed', accentColor: 'var(--mobi-orange)', flexShrink: 0, opacity: previewMode !== 'off' ? 0.6 : 1 }}
                           />
                         )}
                         <span style={{
@@ -904,15 +1004,18 @@ export default function SchedulePage() {
                     )}
                     {/* 과제 제출 버튼들 */}
                     {taskLecs.map(lec => {
-                      const submitted = lec.rowIndex !== undefined ? submissionsMap[lec.rowIndex] : undefined
+                      const submitted = lec.rowIndex !== undefined ? effectiveSubs[lec.rowIndex] : undefined
+                      const canAct = effectiveCanCheck && previewMode === 'off'
                       return (
                         <div key={lec.rowIndex} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          {canCheck && lec.rowIndex !== undefined && (
+                          {effectiveCanCheck && lec.rowIndex !== undefined && (
                             <input
                               type="checkbox"
-                              checked={completedRows.has(lec.rowIndex)}
+                              checked={effectiveCompleted.has(lec.rowIndex)}
                               onChange={e => toggleComplete(lec.rowIndex!, e)}
-                              style={{ width: '13px', height: '13px', cursor: 'pointer', accentColor: '#F59E0B', flexShrink: 0 }}
+                              disabled={previewMode !== 'off'}
+                              title={previewMode !== 'off' ? '미리보기 모드 (읽기 전용)' : undefined}
+                              style={{ width: '13px', height: '13px', cursor: previewMode === 'off' ? 'pointer' : 'not-allowed', accentColor: '#F59E0B', flexShrink: 0, opacity: previewMode !== 'off' ? 0.6 : 1 }}
                             />
                           )}
                           {submitted ? (
@@ -921,21 +1024,21 @@ export default function SchedulePage() {
                               title={lec.name}>
                               ✅ {lec.link_labels[0] || lec.name}
                             </a>
-                          ) : (
+                          ) : canAct ? (
                             <button
-                              onClick={() => canCheck && setSubmitTarget(lec)}
-                              disabled={!canCheck}
+                              onClick={() => setSubmitTarget(lec)}
                               style={{
                                 fontSize: '10px', fontWeight: 700,
                                 padding: '2px 7px', borderRadius: '5px',
-                                background: canCheck ? '#F59E0B' : '#E5E7EB',
-                                color: canCheck ? '#fff' : '#9CA3AF',
-                                border: 'none', cursor: canCheck ? 'pointer' : 'default',
+                                background: '#F59E0B', color: '#fff',
+                                border: 'none', cursor: 'pointer',
                                 fontFamily: 'inherit',
                               }}>
                               📎 {lec.link_labels[0] || '과제제출'}
                             </button>
-                          )}
+                          ) : effectiveCanCheck ? (
+                            <span style={{ fontSize: '10px', color: '#9CA3AF', fontStyle: 'italic' }}>미제출</span>
+                          ) : null}
                         </div>
                       )
                     })}

@@ -9,6 +9,7 @@ import {
   getAllCompletions,
   addCompletion,
   removeCompletion,
+  getUserPermissions,
 } from '@/lib/sheets'
 
 /**
@@ -25,7 +26,20 @@ export async function GET(req: Request) {
 
   const role = (session.user as any).role as string
   const { searchParams } = new URL(req.url)
-  const emailParam = searchParams.get('email')
+  const emailParam    = searchParams.get('email')
+  const viewAsName    = searchParams.get('viewAsName')
+
+  // CO1 전용: 인턴 이름으로 조회
+  if (role === 'CO1' && viewAsName) {
+    const users = await getUserPermissions()
+    const user  = users.find(u => u.name === viewAsName)
+    if (!user) return NextResponse.json({ indices: [], submissions: {} })
+    const [indices, submissions] = await Promise.all([
+      getCompletionsByEmail(user.email),
+      getSubmissionsByEmail(user.email),
+    ])
+    return NextResponse.json({ indices, submissions })
+  }
 
   if (role === 'CO1' && !emailParam) {
     // 전체 완료 기록 반환

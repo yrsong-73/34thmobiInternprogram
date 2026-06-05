@@ -14,20 +14,6 @@ function showToast(msg: string) {
   setTimeout(() => el.classList.remove('show'), 2200)
 }
 
-// ⚠️ 34기 인턴 정보로 교체 필요 (현재 33기 테스트 데이터)
-const INTERNS_LIST = [
-  { name: '정의창', job: '마케팅',       type: 'marketing' },
-  { name: '백호정', job: '마케팅',       type: 'marketing' },
-  { name: '김수연', job: '마케팅',       type: 'marketing' },
-  { name: '국정현', job: '마케팅',       type: 'marketing' },
-  { name: '최재언', job: '마케팅',       type: 'marketing' },
-  { name: '박예슬', job: '마케팅',       type: 'marketing' },
-  { name: '이동제', job: '마케팅',       type: 'marketing' },
-  { name: '정원형', job: 'AI·AX',        type: 'aiax'      },
-  { name: '정수빈', job: 'AI·AX',        type: 'aiax'      },
-  { name: '오지원', job: '사업기획·전략', type: 'biz'       },
-  { name: '최민석', job: '사업기획·전략', type: 'biz'       },
-]
 
 const JOB_COLOR: Record<string, string> = {
   marketing: '#FF6B2B',
@@ -68,6 +54,7 @@ export default function RecordPage() {
   const userName = (session?.user as any)?.userName as string || ''
   const isCO1    = role === 'CO1'
 
+  const [internsList, setInternsList]   = useState<{ name: string; job: string; type: string }[]>([])
   const [records, setRecords]           = useState<InternRecord[]>([])
   const [loading, setLoading]           = useState(true)
   const [saving, setSaving]             = useState(false)
@@ -89,17 +76,24 @@ export default function RecordPage() {
     if (userName && !viewAuthor) setViewAuthor(userName)
   }, [userName])
 
-  async function fetchRecords() {
+  async function fetchAll() {
     setLoading(true)
-    const res = await fetch('/api/records')
-    if (res.ok) {
-      const data = await res.json()
+    const [recordsRes, internsRes] = await Promise.all([
+      fetch('/api/records'),
+      fetch('/api/interns'),
+    ])
+    if (recordsRes.ok) {
+      const data = await recordsRes.json()
       setRecords(data.records ?? [])
+    }
+    if (internsRes.ok) {
+      const data = await internsRes.json()
+      setInternsList((data.interns ?? []).map((i: any) => ({ name: i.name, job: i.job, type: i.type })))
     }
     setLoading(false)
   }
   useEffect(() => {
-    if (status === 'authenticated' && role === 'CO1') fetchRecords()
+    if (status === 'authenticated' && role === 'CO1') fetchAll()
   }, [status, role])
 
   // 작성자 목록
@@ -133,7 +127,7 @@ export default function RecordPage() {
     if (success > 0) {
       showToast(`✅ ${success}건 저장되었습니다`)
       setDrafts({})
-      await fetchRecords()
+      await fetchAll()
     } else {
       showToast('❌ 저장 실패. 다시 시도해주세요.')
     }
@@ -148,7 +142,7 @@ export default function RecordPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rowIndex: r.rowIndex }),
     })
-    if (res.ok) { showToast('🗑️ 기록이 삭제되었습니다'); await fetchRecords() }
+    if (res.ok) { showToast('🗑️ 기록이 삭제되었습니다'); await fetchAll() }
     else showToast('❌ 삭제 실패')
   }
 
@@ -161,8 +155,8 @@ export default function RecordPage() {
     return true
   })
 
-  // 인턴별 그룹화 (INTERNS_LIST 순서 유지)
-  const grouped = INTERNS_LIST.reduce<Record<string, InternRecord[]>>((acc, intern) => {
+  // 인턴별 그룹화 (internsList 순서 유지)
+  const grouped = internsList.reduce<Record<string, InternRecord[]>>((acc, intern) => {
     const recs = filteredRecords
       .filter(r => r.intern === intern.name)
       .sort((a, b) => b.date.localeCompare(a.date))
@@ -228,7 +222,7 @@ export default function RecordPage() {
           gap: '16px',
           marginBottom: '24px',
         }}>
-          {INTERNS_LIST.map(intern => {
+          {internsList.map(intern => {
             const prevRecs  = getPrevRecords(intern.name, viewAuthor)
             const jobColor  = JOB_COLOR[intern.type] || '#FF6B2B'
             const draftVal  = drafts[intern.name] || ''
@@ -331,7 +325,7 @@ export default function RecordPage() {
               onChange={e => setViewIntern(e.target.value)}
               style={{ ...selectStyle, minWidth: '130px' }}>
               <option value="all">전체 인턴</option>
-              {INTERNS_LIST.map(i => (
+              {internsList.map(i => (
                 <option key={i.name} value={i.name}>
                   {i.name} ({records.filter(r => r.intern === i.name).length})
                 </option>
@@ -380,7 +374,7 @@ export default function RecordPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {Object.entries(grouped).map(([internName, recs]) => {
                 if (recs.length === 0) return null
-                const internInfo = INTERNS_LIST.find(i => i.name === internName)
+                const internInfo = internsList.find(i => i.name === internName)
                 const jobColor   = JOB_COLOR[internInfo?.type || 'marketing'] || '#FF6B2B'
                 return (
                   <div key={internName}>

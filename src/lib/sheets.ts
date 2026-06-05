@@ -134,14 +134,15 @@ export async function updateIntern(rowIndex: number, data: Partial<Intern>): Pro
 export async function getRecords(): Promise<InternRecord[]> {
   const rows = await readSheet('records!A2:E')
   return rows
-    .filter(r => r[0])
-    .map((r, i) => ({
+    .map((r, i) => ({ r, rowIndex: i + 2 }))
+    .filter(({ r }) => r[0])
+    .map(({ r, rowIndex }) => ({
       intern:      r[0] || '',
       author:      r[1] || '',
       date:        r[2] || '',
       content:     r[3] || '',
       created_at:  r[4] || '',
-      rowIndex:    i + 2,
+      rowIndex,
     }))
 }
 

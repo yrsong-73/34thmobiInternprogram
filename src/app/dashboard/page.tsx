@@ -32,21 +32,6 @@ const JOB_BG: Record<string, string> = {
   biz:       'rgba(139,92,246,0.1)',
 }
 
-// ⚠️ 34기 데이터로 교체 필요 (현재 33기 테스트 데이터)
-const FALLBACK_INTERNS: Intern[] = [
-  { name: '정의창', job: '마케팅',       type: 'marketing', mbti: 'ESFP', age: '30세(97년생)', school: '한성대 영어영문학부',             career: '퍼포먼스마케팅 매니저 (2025.09~2026.01)',    score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '백호정', job: '마케팅',       type: 'marketing', mbti: 'ISTJ', age: '32세(95년생)', school: '충북대 정치외교학과',              career: '광고기획 운영 (2025.06~2026.02)',            score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '김수연', job: '마케팅',       type: 'marketing', mbti: 'ENTJ', age: '25세(02년생)', school: '아주대 경영학과',                  career: '스펙업애드 마케팅 인턴',                      score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '국정현', job: '마케팅',       type: 'marketing', mbti: 'ESTJ', age: '27세(00년생)', school: '경희대 미디어학과',                career: 'KBS 뉴스 FD (2024~현재)',                    score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '최재언', job: '마케팅',       type: 'marketing', mbti: 'INFP', age: '26세(01년생)', school: '고려대 경영학',                    career: '카페 마케팅, 교환학생 (빈 경제대)',          score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '박예슬', job: '마케팅',       type: 'marketing', mbti: 'ISFP', age: '25세(02년생)', school: '서강대 글로벌한국학·경영·빅데이터', career: 'BITAmin, 코멘토 인턴 등',                   score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '이동제', job: '마케팅',       type: 'marketing', mbti: 'ENFJ', age: '30세(97년생)', school: '한국외대 컴퓨터공학부',            career: '퀀트 마케팅 학회, 일본 거주 2.5년',         score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '정원형', job: 'AI·AX',        type: 'aiax',      mbti: 'ISTJ', age: '29세(98년생)', school: '한양대 경영학부',                  career: 'AI 심화캠프, SK Networks 플레이데이터',      score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '정수빈', job: 'AI·AX',        type: 'aiax',      mbti: 'ISTP', age: '26세(01년생)', school: '인하대 경제·통계학',               career: 'KMAT AI·빅데이터 PA (현재)',                 score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '오지원', job: '사업기획·전략', type: 'biz',       mbti: 'INFP', age: '26세(01년생)', school: '이화여대 사학·경영',              career: '경영기획/IR 인턴, 교환학생 (일본)',          score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-  { name: '최민석', job: '사업기획·전략', type: 'biz',       mbti: 'ISFP', age: '29세(98년생)', school: '서강대 경영학과',                  career: '키투웨이 Business Analyst, 영어 원어민',     score_mini: 0, score_test: 0, score_attitude: 0, attend_rate: 0, assign_rate: 0, summary: '' },
-]
-
 
 function scoreColor(score: number, max: number) {
   if (score === 0) return 'var(--text-muted)'
@@ -73,7 +58,6 @@ export default function DashboardPage() {
   const [saving, setSaving]               = useState(false)
   // 지각/결석 메모: { 인턴명: 텍스트 } — Sheets attend_note 컬럼 연동 전 세션 내 유지
   const [attendNotes, setAttendNotes]     = useState<Record<string, string>>({})
-  const [usingFallback, setUsingFallback] = useState(false)
   const [attendRates, setAttendRates]     = useState<Record<string, number>>({})
   const [submissions, setSubmissions]     = useState<Record<string, { rowIndex: number; scheduleName: string; submissionUrl: string }[]>>({})
 
@@ -90,11 +74,10 @@ export default function DashboardPage() {
       const res = await fetch('/api/interns')
       if (res.ok) {
         const data = await res.json()
-        if (data.interns?.length > 0) { setUsingFallback(false); return data.interns }
+        return data.interns ?? []
       }
     } catch {}
-    setUsingFallback(true)
-    return FALLBACK_INTERNS
+    return []
   }
 
   async function fetchRecords(): Promise<InternRecord[]> {
@@ -160,7 +143,6 @@ export default function DashboardPage() {
     if (!editingName) return
     const intern = interns.find(i => i.name === editingName)
     if (!intern) return
-    if (usingFallback) { showToast('⚠️ 테스트 데이터 모드 — Sheets 연동 후 수정 가능합니다'); setEditingName(null); return }
     setSaving(true)
     const res = await fetch('/api/interns', {
       method: 'PUT',
@@ -199,11 +181,6 @@ export default function DashboardPage() {
             <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 인턴 대시보드</h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
               34기 인턴 {interns.length}명 · 점수 및 평가 현황
-              {usingFallback && (
-                <span style={{ marginLeft: '10px', fontSize: '11.5px', color: '#F59E0B', fontWeight: 600, background: '#FFFBEB', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '20px' }}>
-                  ⚠️ 테스트 데이터 (Sheets 미연동)
-                </span>
-              )}
             </p>
           </div>
           {isCO1 && <span style={{ background: 'rgba(255,107,43,0.1)', border: '1px solid var(--mobi-orange-border)', color: 'var(--mobi-orange)', fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px' }}>✏️ 수정 가능 모드</span>}

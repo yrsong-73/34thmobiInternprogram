@@ -79,17 +79,24 @@ async function clearRow(sheetName: string, rowIndex: number): Promise<void> {
 // ──────────────────────────────────────────────
 // 인턴 목록 (interns 시트)
 // 컬럼: name | job | type | mbti | age | school | career |
-//       score_mini | score_test | score_attitude | attend_rate | assign_rate | summary
+//       score_mini | score_test | score_attitude | attend_rate | assign_rate | summary |
+//       test_top | test_bottom
 // ──────────────────────────────────────────────
 
+function jobToType(job: string): 'marketing' | 'aiax' | 'biz' {
+  if (job.includes('AI') || job.includes('AX')) return 'aiax'
+  if (job.includes('사업') || job.includes('전략')) return 'biz'
+  return 'marketing'
+}
+
 export async function getInterns(): Promise<Intern[]> {
-  const rows = await readSheet('interns!A2:M')
+  const rows = await readSheet('interns!A2:O')
   return rows
     .filter(r => r[0])
     .map((r, i) => ({
       name:            r[0] || '',
       job:             r[1] || '',
-      type:            (r[2] as any) || 'marketing',
+      type:            ((r[2] as any) || jobToType(r[1])) as 'marketing' | 'aiax' | 'biz',
       mbti:            r[3] || '',
       age:             r[4] || '',
       school:          r[5] || '',
@@ -100,13 +107,14 @@ export async function getInterns(): Promise<Intern[]> {
       attend_rate:     Number(r[10]) || 0,
       assign_rate:     Number(r[11]) || 0,
       summary:         r[12] || '',
-      rowIndex:        i + 2, // 헤더(1행) 제외 → 데이터 시작 2행
+      test_top:        r[13] || '',
+      test_bottom:     r[14] || '',
+      rowIndex:        i + 2,
     }))
 }
 
 export async function updateIntern(rowIndex: number, data: Partial<Intern>): Promise<void> {
-  // 기존 행을 읽어서 병합
-  const rows = await readSheet(`interns!A${rowIndex}:M${rowIndex}`)
+  const rows = await readSheet(`interns!A${rowIndex}:O${rowIndex}`)
   const existing = rows[0] || []
   const merged = [
     data.name             ?? existing[0]  ?? '',
@@ -122,6 +130,8 @@ export async function updateIntern(rowIndex: number, data: Partial<Intern>): Pro
     data.attend_rate      ?? existing[10] ?? '',
     data.assign_rate      ?? existing[11] ?? '',
     data.summary          ?? existing[12] ?? '',
+    data.test_top         ?? existing[13] ?? '',
+    data.test_bottom      ?? existing[14] ?? '',
   ]
   await updateRow('interns', rowIndex, merged)
 }

@@ -34,6 +34,8 @@ export interface Intern {
   assign_rate: number        // 과제 완수율 (%)
   attend_note?: string       // 지각/결석 메모 (예: 지각 1회/병원)
   summary: string            // 종합 코멘트
+  test_top?: string          // TEST 상위 2과목
+  test_bottom?: string       // TEST 하위 2과목
   rowIndex?: number          // Sheets 행 번호 (수정 시 사용)
 }
 

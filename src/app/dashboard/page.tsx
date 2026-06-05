@@ -279,7 +279,7 @@ export default function DashboardPage() {
             <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>📋 평가 통합표</h2>
             {isCO1 && (
               <span style={{ fontSize: '12px', color: 'var(--mobi-orange)', background: 'rgba(255,107,43,0.07)', border: '1px solid var(--mobi-orange-border)', padding: '3px 10px', borderRadius: '6px' }}>
-                ✏️ CO1 전용 · 행을 클릭하면 수기 편집 가능합니다
+                ✏️ CO1 전용 · 수정 버튼을 클릭하면 편집 가능합니다
               </span>
             )}
           </div>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
-                  {['이름','직무','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','지각/결석','태도 요약'].map(h => (
+                  {['직무','이름','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '11.5px', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                   {isCO1 && <th style={{ padding: '10px 12px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
@@ -307,32 +307,28 @@ export default function DashboardPage() {
                       key={intern.name}
                       ref={el => { rowRefs.current[intern.name] = el }}
                       className={isSelected ? 'table-row-selected' : ''}
-                      onClick={() => !isEditing && isCO1 && startEdit(intern)}
                       style={{
                         background: isSelected ? '#FFD6C2' : 'transparent',
-                        cursor: isCO1 && !isEditing ? 'pointer' : 'default',
                         borderBottom: '1px solid var(--border)',
                         transition: 'background 0.15s',
                       }}
                     >
-                      {/* 이름 */}
-                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
-                      </td>
-
                       {/* 직무 */}
                       <td style={{ padding: '12px 12px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: '11px', fontWeight: 700, color: jobColor, background: jobColor + '18', padding: '2px 8px', borderRadius: '20px' }}>{intern.job}</span>
+                      </td>
+
+                      {/* 이름 */}
+                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
                       </td>
 
                       {/* 학교 */}
                       <td style={{ padding: '12px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px' }}>{intern.school}</td>
 
                       {/* 경력 */}
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontSize: '12px', maxWidth: '180px' }}>
-                        <div style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
-                          {intern.career || '—'}
-                        </div>
+                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: '160px', maxWidth: '260px' }}>
+                        {intern.career || '—'}
                       </td>
 
                       {/* 수강체크율 */}
@@ -380,6 +376,59 @@ export default function DashboardPage() {
                             style={{ ...cellInputStyle, width: '52px' }} />
                         ) : (
                           <span style={{ fontWeight: 600, color: scoreColor(intern.score_attitude, 5) }}>{intern.score_attitude} / 5</span>
+                        )}
+                      </td>
+
+                      {/* TEST 상위 2과목 */}
+                      <td style={{ padding: '12px 12px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.test_top ?? intern.test_top ?? ''}
+                            placeholder="예: 퍼포먼스마케팅, SEO"
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setEditData(p => ({ ...p, test_top: e.target.value }))}
+                            style={{ width: '100%', padding: '4px 8px', border: '1px solid var(--mobi-orange)', borderRadius: '5px', fontSize: '12px', fontFamily: 'inherit', boxSizing: 'border-box' as const }}
+                          />
+                        ) : (
+                          <span style={{ color: editData.test_top || intern.test_top ? '#059669' : 'var(--text-muted)', fontStyle: editData.test_top || intern.test_top ? 'normal' : 'italic' }}>
+                            {intern.test_top || '—'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* TEST 하위 2과목 */}
+                      <td style={{ padding: '12px 12px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.test_bottom ?? intern.test_bottom ?? ''}
+                            placeholder="예: GA4, 데이터분석"
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setEditData(p => ({ ...p, test_bottom: e.target.value }))}
+                            style={{ width: '100%', padding: '4px 8px', border: '1px solid var(--mobi-orange)', borderRadius: '5px', fontSize: '12px', fontFamily: 'inherit', boxSizing: 'border-box' as const }}
+                          />
+                        ) : (
+                          <span style={{ color: editData.test_bottom || intern.test_bottom ? '#EF4444' : 'var(--text-muted)', fontStyle: editData.test_bottom || intern.test_bottom ? 'normal' : 'italic' }}>
+                            {intern.test_bottom || '—'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 과제 제출링크 */}
+                      <td style={{ padding: '12px 12px', minWidth: '140px' }}>
+                        {(submissions[intern.name] ?? []).length === 0 ? (
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>없음</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            {(submissions[intern.name] ?? []).map((s, i) => (
+                              <a key={i} href={s.submissionUrl} target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize: '11.5px', color: 'var(--mobi-orange)', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '160px' }}
+                                title={s.scheduleName}>
+                                📎 {s.scheduleName}
+                              </a>
+                            ))}
+                          </div>
                         )}
                       </td>
 
@@ -434,7 +483,7 @@ export default function DashboardPage() {
                         )}
                       </td>
 
-                      {/* 저장/취소 버튼 (CO1) */}
+                      {/* 수정/저장/취소 버튼 (CO1) */}
                       {isCO1 && (
                         <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                           {isEditing ? (
@@ -444,7 +493,14 @@ export default function DashboardPage() {
                               <button onClick={() => setEditingName(null)}
                                 style={{ border: '1px solid var(--border)', borderRadius: '5px', padding: '4px 10px', fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer', background: '#fff', fontFamily: 'inherit' }}>취소</button>
                             </div>
-                          ) : null}
+                          ) : (
+                            <button
+                              onClick={() => startEdit(intern)}
+                              disabled={!!editingName}
+                              style={{ border: '1px solid var(--border)', borderRadius: '5px', padding: '4px 10px', fontSize: '11px', color: editingName ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: editingName ? 'default' : 'pointer', background: '#fff', fontFamily: 'inherit', opacity: editingName ? 0.5 : 1 }}>
+                              ✏️ 수정
+                            </button>
+                          )}
                         </td>
                       )}
                     </tr>

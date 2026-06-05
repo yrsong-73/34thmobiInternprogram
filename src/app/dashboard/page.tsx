@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
+import { usePreview } from '@/context/PreviewContext'
 import type { Intern, Record as InternRecord } from '@/types'
 
 function showToast(msg: string) {
@@ -46,7 +47,9 @@ export default function DashboardPage() {
   const router = useRouter()
 
   const role  = (session?.user as any)?.role as string | undefined
-  const isCO1 = role === 'CO1'
+  const { effectiveRole, isCO1Real, previewMode } = usePreview()
+  const isCO1 = effectiveRole === 'CO1'           // 편집 권한: 실제 CO1 + 미리보기 꺼진 상태
+  const canEdit = role === 'CO1' && previewMode === 'off'
 
   const [interns, setInterns]             = useState<Intern[]>([])
   const [records, setRecords]             = useState<InternRecord[]>([])
@@ -66,6 +69,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
+    // 실제 인턴은 리다이렉트 (미리보기 중인 CO1은 유지)
     if (status === 'authenticated' && role === 'Intern') router.replace('/schedule')
   }, [status, role, router])
 
@@ -155,6 +159,19 @@ export default function DashboardPage() {
     setEditingName(null)
   }
 
+  // 인턴 미리보기 중: 인턴은 대시보드 접근 불가 안내
+  if (status === 'authenticated' && effectiveRole === 'Intern') return (
+    <>
+      <Nav />
+      <main style={{ padding: '60px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '40px', marginBottom: '16px' }}>🔒</div>
+        <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>인턴은 이 페이지에 접근할 수 없습니다</div>
+        <div style={{ fontSize: '13px', marginBottom: '20px' }}>인턴 시점 미리보기 중입니다. 인턴은 시간표 페이지만 접근 가능합니다.</div>
+        <a href="/schedule" style={{ display: 'inline-block', padding: '8px 20px', background: 'var(--mobi-orange)', color: '#fff', borderRadius: '8px', fontWeight: 700, fontSize: '13px', textDecoration: 'none' }}>시간표로 이동</a>
+      </main>
+    </>
+  )
+
   if (status === 'loading' || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -183,7 +200,11 @@ export default function DashboardPage() {
               34기 인턴 {interns.length}명 · 점수 및 평가 현황
             </p>
           </div>
-          {isCO1 && <span style={{ background: 'rgba(255,107,43,0.1)', border: '1px solid var(--mobi-orange-border)', color: 'var(--mobi-orange)', fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px' }}>✏️ 수정 가능 모드</span>}
+          {isCO1Real && previewMode !== 'off' && (
+            <span style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#818CF8', fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px' }}>
+              👁️ {previewMode === 'member' ? '멤버' : 'Intern'} 시점 미리보기
+            </span>
+          )}
         </div>
 
         {/* 직무 필터 탭 */}
@@ -277,9 +298,9 @@ export default function DashboardPage() {
         <div ref={tableRef} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>📋 평가 통합표</h2>
-            {isCO1 && (
+            {canEdit && (
               <span style={{ fontSize: '12px', color: 'var(--mobi-orange)', background: 'rgba(255,107,43,0.07)', border: '1px solid var(--mobi-orange-border)', padding: '3px 10px', borderRadius: '6px' }}>
-                ✏️ CO1 전용 · 수정 버튼을 클릭하면 편집 가능합니다
+                ✏️ 각 행의 수정 버튼을 클릭하면 편집 가능합니다
               </span>
             )}
           </div>
@@ -288,16 +309,16 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
-                  {['직무','이름','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'].map(h => (
+                  {['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '11.5px', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
-                  {isCO1 && <th style={{ padding: '10px 12px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
+                  {canEdit && <th style={{ padding: '10px 12px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(intern => {
                   const isSelected  = selectedName   === intern.name
-                  const isEditing   = editingName    === intern.name && isCO1
+                  const isEditing   = editingName    === intern.name && canEdit
                   const internRecs  = getInternRecords(intern.name)
                   const attendNote  = attendNotes[intern.name] ?? (intern as any).attend_note ?? ''
                   const jobColor    = JOB_COLOR[intern.type] || '#FF6B2B'
@@ -323,12 +344,20 @@ export default function DashboardPage() {
                         <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
                       </td>
 
+                      {/* MBTI / 나이 */}
+                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                        {intern.mbti && <span style={{ fontWeight: 600, color: '#6366F1' }}>{intern.mbti}</span>}
+                        {intern.mbti && intern.age && <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>·</span>}
+                        {intern.age && <span>{intern.age}</span>}
+                        {!intern.mbti && !intern.age && <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </td>
+
                       {/* 학교 */}
                       <td style={{ padding: '12px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px' }}>{intern.school}</td>
 
                       {/* 경력 */}
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: '160px', maxWidth: '260px' }}>
-                        {intern.career || '—'}
+                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: '260px', maxWidth: '400px' }}>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{intern.career || '—'}</div>
                       </td>
 
                       {/* 수강체크율 */}
@@ -483,8 +512,8 @@ export default function DashboardPage() {
                         )}
                       </td>
 
-                      {/* 수정/저장/취소 버튼 (CO1) */}
-                      {isCO1 && (
+                      {/* 수정/저장/취소 버튼 (실제 CO1 + 미리보기 꺼진 상태) */}
+                      {canEdit && (
                         <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                           {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

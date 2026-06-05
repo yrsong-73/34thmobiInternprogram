@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import Nav from '@/components/Nav'
+import { usePreview } from '@/context/PreviewContext'
 import type { ScheduleRow, DayGroup, LectureType } from '@/types'
 
 const TYPE_LABEL: Record<LectureType, string> = {
@@ -405,20 +406,20 @@ export default function SchedulePage() {
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
 
-  // ── 미리보기 모드 (CO1 전용) ──────────────────────────────
-  const [previewMode, setPreviewMode]             = useState<'off' | 'member' | 'intern'>('off')
-  const [previewInternName, setPreviewInternName] = useState('')
+  // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
+  const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
   const [previewCompletedRows, setPreviewCompletedRows] = useState<Set<number>>(new Set())
   const [previewSubmissionsMap, setPreviewSubmissionsMap] = useState<Record<number, string>>({})
-  const [previewInternsList, setPreviewInternsList] = useState<{ name: string; job: string; type: string }[]>([])
 
   // 파생: 실제 렌더링에 사용하는 effective 값
   const internPreviewActive = previewMode === 'intern' && !!previewInternName
   const effectiveIsCO1      = isCO1 && previewMode === 'off'
   const effectiveIsIntern   = isIntern || internPreviewActive
   const effectiveCanCheck   = effectiveIsCO1 || effectiveIsIntern
-  const effectiveCompleted  = internPreviewActive ? previewCompletedRows : completedRows
-  const effectiveSubs       = internPreviewActive ? previewSubmissionsMap : submissionsMap
+  const effectiveCompleted  = previewMode === 'member' ? new Set<number>() :
+                              internPreviewActive ? previewCompletedRows : completedRows
+  const effectiveSubs       = previewMode === 'member' ? {} :
+                              internPreviewActive ? previewSubmissionsMap : submissionsMap
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
@@ -440,12 +441,6 @@ export default function SchedulePage() {
   }, [])
 
   useEffect(() => { if (status === 'authenticated') fetchAll() }, [status, fetchAll])
-
-  // CO1 전용: 인턴 목록 로드 (미리보기 드롭다운용)
-  useEffect(() => {
-    if (!isCO1) return
-    fetch('/api/interns').then(r => r.json()).then(d => setPreviewInternsList(d.interns ?? [])).catch(() => {})
-  }, [isCO1])
 
   // 인턴 선택 시 해당 인턴의 완료 현황 로드
   useEffect(() => {
@@ -606,54 +601,6 @@ export default function SchedulePage() {
             </span>
           )}
         </div>
-
-        {/* CO1 미리보기 모드 전환 바 */}
-        {isCO1 && (
-          <div style={{ background: '#F3F4F6', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '2px' }}>미리보기</span>
-            {(['off', 'member', 'intern'] as const).map(mode => {
-              const labels = { off: 'CO1 기본', member: '멤버로 보기', intern: '인턴으로 보기' }
-              const active = previewMode === mode
-              return (
-                <button
-                  key={mode}
-                  onClick={() => { setPreviewMode(mode); if (mode !== 'intern') setPreviewInternName('') }}
-                  style={{
-                    padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                    border: active ? 'none' : '1.5px solid var(--border)',
-                    background: active ? 'var(--mobi-dark)' : '#fff',
-                    color: active ? '#fff' : 'var(--text-secondary)',
-                  }}
-                >
-                  {labels[mode]}
-                </button>
-              )
-            })}
-            {previewMode === 'intern' && (
-              <select
-                value={previewInternName}
-                onChange={e => setPreviewInternName(e.target.value)}
-                style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontFamily: 'inherit', color: 'var(--text-primary)', background: '#fff', cursor: 'pointer' }}
-              >
-                <option value="">-- 인턴 선택 --</option>
-                {previewInternsList.map(i => (
-                  <option key={i.name} value={i.name}>{i.name} ({i.job})</option>
-                ))}
-              </select>
-            )}
-            {internPreviewActive && (
-              <span style={{ fontSize: '11px', color: 'var(--mobi-orange)', fontWeight: 600, marginLeft: '4px' }}>
-                👁️ {previewInternName}의 시점으로 보는 중
-              </span>
-            )}
-            {previewMode === 'member' && (
-              <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, marginLeft: '4px' }}>
-                👁️ 멤버 시점으로 보는 중
-              </span>
-            )}
-          </div>
-        )}
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           {JOB_TABS.map(tab => (

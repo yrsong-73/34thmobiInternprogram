@@ -69,7 +69,7 @@ function emptyRow(weekNum: number, dayNum: number, dayLabel: string, dateLabel: 
     eval_label: evalLabel, sort_order: sortOrder,
     time: '', name: '', type: 'offline', teacher: '',
     duration: '', link_labels: [], link_urls: [],
-    lunch_with: '', note: '', job_types: ['all'],
+    lunch_with: '', note: '', job_types: ['all'], location: '',
   }
 }
 
@@ -96,6 +96,7 @@ function EditModal({
     name:       row.name       ?? '',
     type:       row.type       ?? 'offline' as LectureType,
     teacher:    row.teacher    ?? '',
+    location:   row.location   ?? '',
     duration:   row.duration   ?? '',
     lunch_with: row.lunch_with ?? '',
     note:       row.note       ?? '',
@@ -154,6 +155,7 @@ function EditModal({
       name:        form.name,
       type:        form.type as LectureType,
       teacher:     form.teacher,
+      location:    form.location,
       duration:    form.duration,
       link_labels: validLinks.map(r => r.label.trim()),
       link_urls:   validLinks.map(r => r.url.trim()),
@@ -211,6 +213,10 @@ function EditModal({
           <div>
             <label style={labelStyle}>강사</label>
             <input style={inputStyle} value={form.teacher} onChange={e => set('teacher', e.target.value)} placeholder="예: 송유림" />
+          </div>
+          <div>
+            <label style={labelStyle}>장소</label>
+            <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} placeholder="예: 3층 회의실" />
           </div>
           <div>
             <label style={labelStyle}>소요시간</label>
@@ -751,8 +757,16 @@ export default function SchedulePage() {
                               ⭐ 시험과목
                             </span>
                           )}
-                          <span style={{ fontSize: '11px', color: '#000', marginLeft: 'auto', fontWeight: 600 }}>{lec.duration}</span>
+                          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {lec.location && (
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                📍 {lec.location}
+                              </span>
+                            )}
+                            <span style={{ fontSize: '11px', color: '#000', fontWeight: 600 }}>{lec.duration}</span>
+                          </div>
                           {canCheck && lec.rowIndex !== undefined && (
+
                             <input
                               type="checkbox"
                               checked={isCompleted}

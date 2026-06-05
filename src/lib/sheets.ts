@@ -315,7 +315,7 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rows = await readSheet('schedule!A2:Q')
+  const rows = await readSheet('schedule!A2:R')
   return rows
     .filter(r => r[0] && r[7]) // week_num, name 필수
     .map((r, i) => ({
@@ -337,6 +337,7 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       note:        r[14] || '',
       job_types:      parseComma(r[15]) || ['all'],
       count_for_rate: r[16]?.toLowerCase() === 'y',
+      location:       r[17] || '',
     }))
 }
 
@@ -359,6 +360,7 @@ function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number
     d.note,
     d.job_types.join(','),
     d.count_for_rate ? 'y' : '',
+    d.location || '',
   ]
 }
 

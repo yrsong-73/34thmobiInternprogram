@@ -309,10 +309,24 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
-                  {['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '11.5px', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                  {canEdit && <th style={{ padding: '10px 12px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
+                  {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'] as const).map((h, i) => {
+                    const FREEZE_LEFT = [0, 110, 200, 310, 420] as const
+                    const FREEZE_MW   = [110, 90, 110, 110, 260] as const
+                    const frozen = i < 5
+                    return (
+                      <th key={h} style={{
+                        padding: '10px 8px', textAlign: 'left', fontWeight: 600,
+                        color: 'var(--text-secondary)', fontSize: '11.5px',
+                        borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap',
+                        ...(frozen ? {
+                          position: 'sticky' as const, left: FREEZE_LEFT[i], zIndex: 2,
+                          background: '#F8F7F4', minWidth: FREEZE_MW[i],
+                          ...(i === 4 ? { boxShadow: '3px 0 6px rgba(0,0,0,0.07)' } : {}),
+                        } : {}),
+                      }}>{h}</th>
+                    )
+                  })}
+                  {canEdit && <th style={{ padding: '10px 8px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
                 </tr>
               </thead>
               <tbody>
@@ -334,34 +348,34 @@ export default function DashboardPage() {
                         transition: 'background 0.15s',
                       }}
                     >
-                      {/* 직무 */}
-                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap' }}>
+                      {/* 직무 — frozen col 0 */}
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110 }}>
                         <span style={{ fontSize: '11px', fontWeight: 700, color: jobColor, background: jobColor + '18', padding: '2px 8px', borderRadius: '20px' }}>{intern.job}</span>
                       </td>
 
-                      {/* 이름 */}
-                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap' }}>
+                      {/* 이름 — frozen col 1 */}
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 110, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 90 }}>
                         <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
                       </td>
 
-                      {/* MBTI / 나이 */}
-                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                      {/* MBTI / 나이 — frozen col 2 */}
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 200, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110 }}>
                         {intern.mbti && <span style={{ fontWeight: 600, color: '#6366F1' }}>{intern.mbti}</span>}
                         {intern.mbti && intern.age && <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>·</span>}
                         {intern.age && <span>{intern.age}</span>}
                         {!intern.mbti && !intern.age && <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
 
-                      {/* 학교 */}
-                      <td style={{ padding: '12px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px' }}>{intern.school}</td>
+                      {/* 학교 — frozen col 3 */}
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110 }}>{intern.school}</td>
 
-                      {/* 경력 */}
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: '260px', maxWidth: '400px' }}>
+                      {/* 경력 — frozen col 4 (마지막 고정 + 그림자 구분선) */}
+                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: 260, maxWidth: 400, position: 'sticky', left: 420, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', boxShadow: '3px 0 6px rgba(0,0,0,0.07)' }}>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{intern.career || '—'}</div>
                       </td>
 
                       {/* 수강체크율 */}
-                      <td style={{ padding: '12px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {isEditing ? (
                           <input type="number" value={editData.attend_rate ?? intern.attend_rate}
                             onClick={e => e.stopPropagation()}
@@ -373,7 +387,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 미니테스트 */}
-                      <td style={{ padding: '12px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {isEditing ? (
                           <input type="number" value={editData.score_mini ?? intern.score_mini}
                             onClick={e => e.stopPropagation()}
@@ -385,7 +399,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 공통테스트 */}
-                      <td style={{ padding: '12px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {isEditing ? (
                           <input type="number" value={editData.score_test ?? intern.score_test}
                             onClick={e => e.stopPropagation()}
@@ -397,7 +411,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 태도평가 */}
-                      <td style={{ padding: '12px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {isEditing ? (
                           <input type="number" min={0} max={5} value={editData.score_attitude ?? intern.score_attitude}
                             onClick={e => e.stopPropagation()}
@@ -409,7 +423,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* TEST 상위 2과목 */}
-                      <td style={{ padding: '12px 12px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
                         {isEditing ? (
                           <input
                             type="text"
@@ -427,7 +441,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* TEST 하위 2과목 */}
-                      <td style={{ padding: '12px 12px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
                         {isEditing ? (
                           <input
                             type="text"
@@ -445,7 +459,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 과제 제출링크 */}
-                      <td style={{ padding: '12px 12px', minWidth: '140px' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '140px' }}>
                         {(submissions[intern.name] ?? []).length === 0 ? (
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>없음</span>
                         ) : (
@@ -462,7 +476,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 지각/결석 */}
-                      <td style={{ padding: '12px 12px', minWidth: '120px' }} onClick={e => e.stopPropagation()}>
+                      <td style={{ padding: '12px 8px', minWidth: '120px' }} onClick={e => e.stopPropagation()}>
                         {isEditing ? (
                           <input
                             type="text"
@@ -479,7 +493,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 태도 요약 (기록 내용 전체 + summary 필드) */}
-                      <td style={{ padding: '12px 12px', minWidth: '200px', maxWidth: '320px' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '200px', maxWidth: '320px' }}>
                         {isEditing ? (
                           <textarea
                             value={editData.summary ?? intern.summary ?? ''}

@@ -8,14 +8,14 @@ const TABS = [
   { id: 'schedule',  href: '/schedule',  icon: 'fa-regular fa-calendar-days', label: '시간표' },
   { id: 'notice',    href: '/notice',    icon: 'fa-regular fa-bell',           label: '공지' },
   { id: 'dashboard', href: '/dashboard', icon: 'fa-solid fa-chart-simple',     label: '인턴 대시보드', roles: ['CO1', 'Member'] },
-  { id: 'record',    href: '/record',    icon: 'fa-regular fa-clipboard',       label: '인턴 기록표',  roles: ['CO1', 'Member'] },
+  { id: 'record',    href: '/record',    icon: 'fa-regular fa-clipboard',       label: '인턴 기록표',  roles: ['CO1'] },
   { id: 'settings',  href: '/settings',  icon: 'fa-solid fa-shield-halved',     label: '권한 관리',   roles: ['CO1'] },
 ]
 
 const ROLE_STYLE: Record<string, { bg: string; border: string; color: string }> = {
-  CO1:    { bg: 'rgba(255,107,43,0.25)',  border: 'rgba(255,107,43,0.5)',  color: '#FF9469' },
-  Member: { bg: 'rgba(59,130,246,0.2)',   border: 'rgba(59,130,246,0.4)', color: '#93C5FD' },
-  Intern: { bg: 'rgba(139,92,246,0.2)',   border: 'rgba(139,92,246,0.4)', color: '#C4B5FD' },
+  CO1:    { bg: 'rgba(255,107,43,0.1)',   border: 'rgba(255,107,43,0.3)',  color: '#C04D15' },
+  Member: { bg: 'rgba(29,68,144,0.08)',   border: 'rgba(29,68,144,0.2)',   color: '#1D4490' },
+  Intern: { bg: 'rgba(124,58,237,0.08)',  border: 'rgba(124,58,237,0.2)', color: '#6D28D9' },
 }
 
 export default function Nav() {
@@ -27,36 +27,47 @@ export default function Nav() {
   const role     = (session?.user as any)?.role as string | undefined
   const userName = (session?.user as any)?.userName || session?.user?.name || ''
 
-  // 탭: effectiveRole 기준으로 필터링
   const visibleTabs = TABS.filter(t => !t.roles || (effectiveRole && t.roles.includes(effectiveRole)))
 
-  // 역할 배지: 미리보기 중이면 변경
   const displayRole = isCO1Real && previewMode !== 'off'
     ? (previewMode === 'member' ? 'Member 미리보기' : (previewInternName ? `${previewInternName} 미리보기` : 'Intern 미리보기'))
     : (role || 'Intern')
   const roleStyle = isCO1Real && previewMode !== 'off'
-    ? { bg: 'rgba(99,102,241,0.25)', border: 'rgba(99,102,241,0.5)', color: '#818CF8' }
+    ? { bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.25)', color: '#4F46E5' }
     : (ROLE_STYLE[role || ''] || ROLE_STYLE['Intern'])
 
   return (
     <div style={{ position: 'sticky', top: 0, zIndex: 100 }}>
-      {/* 메인 내비 */}
+      {/* ── 메인 네비 ── */}
       <nav style={{
-        background: 'var(--mobi-dark)',
+        background: '#fff',
         padding: '0 32px',
         display: 'flex',
         alignItems: 'center',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid var(--border)',
+        boxShadow: '0 1px 0 var(--border)',
+        height: '56px',
       }}>
         {/* 로고 */}
-        <div style={{
-          color: '#fff', fontSize: '15px', fontWeight: 700, letterSpacing: '-0.3px',
-          padding: '18px 0', marginRight: '36px',
-          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
-        }} onClick={() => router.push('/schedule')}>
-          <i className="fa-solid fa-hexagon-nodes" style={{ color: 'var(--mobi-orange)' }} />
-          Mobidays
-          <span style={{ background: 'var(--mobi-orange)', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px' }}>
+        <div
+          onClick={() => router.push('/schedule')}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '32px', cursor: 'pointer', padding: '16px 0' }}
+        >
+          <img
+            src="/logo.png"
+            alt="Mobidays"
+            style={{ height: '24px', objectFit: 'contain' }}
+            onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+          />
+          <span style={{
+            background: 'var(--primary)',
+            color: '#fff',
+            fontSize: '10px',
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: '20px',
+            letterSpacing: '0.2px',
+          }}>
             34기 인턴십
           </span>
         </div>
@@ -66,53 +77,86 @@ export default function Nav() {
           const isActive = pathname.startsWith(tab.href)
           return (
             <a key={tab.id} href={tab.href} style={{
-              color: isActive ? '#fff' : 'rgba(255,255,255,0.5)',
-              fontSize: '13.5px', fontWeight: 500,
-              padding: '18px 16px', cursor: 'pointer',
-              borderBottom: isActive ? '2px solid var(--mobi-orange)' : '2px solid transparent',
-              transition: 'all 0.2s', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap',
-            }}>
-              <i className={tab.icon} style={{ fontSize: '14px' }} />
+              color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+              fontSize: '13.5px',
+              fontWeight: isActive ? 700 : 500,
+              padding: '0 14px',
+              height: '56px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
+              transition: 'all 0.15s',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+            >
+              <i className={tab.icon} style={{ fontSize: '13px' }} />
               {tab.label}
-              {tab.id === 'settings' && <span style={{ fontSize: '10px', opacity: 0.6, marginLeft: '2px' }}>CO1</span>}
             </a>
           )
         })}
 
-        {/* 우측: 사용자 정보 */}
+        {/* 우측: 사용자 */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 600 }}>{userName}</span>
+          <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{userName}</span>
           <span style={{
-            fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap',
-            background: roleStyle.bg, border: `1px solid ${roleStyle.border}`, color: roleStyle.color,
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '3px 10px',
+            borderRadius: '20px',
+            whiteSpace: 'nowrap',
+            background: roleStyle.bg,
+            border: `1px solid ${roleStyle.border}`,
+            color: roleStyle.color,
           }}>
             {displayRole}
           </span>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
             style={{
-              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '12px',
-              padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+              background: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              color: 'var(--text-muted)',
+              fontSize: '12px',
+              padding: '5px 12px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontWeight: 500,
+              transition: 'all 0.15s',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-strong)'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'
+            }}
           >
             로그아웃
           </button>
         </div>
       </nav>
 
-      {/* CO1 전용 권한 미리보기 바 */}
+      {/* ── CO1 전용 권한 미리보기 바 ── */}
       {isCO1Real && (
         <div style={{
-          background: '#131720',
-          borderBottom: previewMode !== 'off' ? '2px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.05)',
+          background: 'var(--bg-hover)',
+          borderBottom: previewMode !== 'off'
+            ? '2px solid rgba(29,68,144,0.3)'
+            : '1px solid var(--border)',
           padding: '7px 32px',
-          display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          flexWrap: 'wrap',
         }}>
-          <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', marginRight: '2px' }}>
+          <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)', marginRight: '2px' }}>
             👁 권한 미리보기
           </span>
 
@@ -121,13 +165,18 @@ export default function Nav() {
             const active = previewMode === mode
             return (
               <button key={mode} onClick={() => setPreviewMode(mode)} style={{
-                padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600,
-                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                border: active ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s',
+                border: active ? 'none' : '1px solid var(--border)',
                 background: active
-                  ? (mode === 'off' ? 'rgba(255,107,43,0.7)' : 'rgba(99,102,241,0.7)')
-                  : 'transparent',
-                color: active ? '#fff' : 'rgba(255,255,255,0.45)',
+                  ? (mode === 'off' ? 'var(--primary)' : '#6366F1')
+                  : '#fff',
+                color: active ? '#fff' : 'var(--text-secondary)',
               }}>
                 {labels[mode]}
               </button>
@@ -139,25 +188,30 @@ export default function Nav() {
               value={previewInternName}
               onChange={e => setPreviewInternName(e.target.value)}
               style={{
-                padding: '3px 8px', borderRadius: '6px',
-                border: '1px solid rgba(255,255,255,0.2)',
-                fontSize: '11px', fontFamily: 'inherit',
-                color: previewInternName ? '#fff' : 'rgba(255,255,255,0.45)',
-                background: 'rgba(255,255,255,0.08)', cursor: 'pointer',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontSize: '11px',
+                fontFamily: 'inherit',
+                color: previewInternName ? 'var(--text-primary)' : 'var(--text-muted)',
+                background: '#fff',
+                cursor: 'pointer',
               }}
             >
-              <option value="" style={{ color: '#1a1a1a', background: '#fff' }}>-- 인턴 선택 --</option>
+              <option value="">-- 인턴 선택 --</option>
               {internsList.map(i => (
-                <option key={i.name} value={i.name} style={{ color: '#1a1a1a', background: '#fff' }}>{i.name} ({i.job})</option>
+                <option key={i.name} value={i.name}>{i.name} ({i.job})</option>
               ))}
             </select>
           )}
 
           {previewMode !== 'off' && (
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', fontStyle: 'italic', marginLeft: '4px' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: '4px' }}>
               {previewMode === 'member'
                 ? '멤버 시점으로 보는 중 · 편집 불가'
-                : (previewInternName ? `${previewInternName} 시점으로 보는 중 · 읽기 전용` : '인턴을 선택하면 해당 인턴 시점으로 전환됩니다')}
+                : (previewInternName
+                  ? `${previewInternName} 시점으로 보는 중 · 읽기 전용`
+                  : '인턴을 선택하면 해당 인턴 시점으로 전환됩니다')}
             </span>
           )}
         </div>

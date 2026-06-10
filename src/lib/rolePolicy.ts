@@ -47,7 +47,7 @@ export const DEFAULT_POLICIES: Record<UserRole, RolePolicy> = {
     schedule_edit_links: false,
     dashboard_view:      true,   // 열람은 가능
     dashboard_edit:      false,
-    record_view:         true,   // 열람은 가능
+    record_view:         false,
     record_write:        false,
     video_view:          true,
     video_edit_url:      false,

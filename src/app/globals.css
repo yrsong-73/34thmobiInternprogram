@@ -1,28 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  --mobi-orange: #FF6B2B;
-  --mobi-orange-light: #FFF0EA;
+  /* ── 브랜드 ── */
+  --primary:            #1D4490;
+  --primary-light:      #EEF2FF;
+  --primary-mid:        #DBEAFE;
+  --primary-hover:      #163676;
+
+  /* 오렌지 (유지) */
+  --mobi-orange:        #FF6B2B;
+  --mobi-orange-light:  #FFF0EA;
   --mobi-orange-border: #FFCFB8;
-  --mobi-dark: #1A1A2E;
-  --mobi-navy: #1B2C56;
-  --bg-main: #F7F6F2;
-  --bg-card: #FFFFFF;
-  --text-primary: #1A1A2E;
-  --text-secondary: #5A5A72;
-  --text-muted: #9898AA;
-  --border: #E8E6E0;
-  --border-strong: #CFCDC5;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 24px rgba(0,0,0,0.10);
-  /* 강의 타입 색상 */
-  --online-color: #3B82F6;
-  --offline-color: #059669;
-  --self-color: #8B5CF6;
-  --task-color: #F59E0B;
-  --exam-color: #E85D75;
+
+  /* 다크 (필터·버튼 등 다크 요소용) */
+  --mobi-dark:          #191F28;
+  --mobi-navy:          #1D4490;
+
+  /* ── 배경 ── */
+  --bg-main:            #F8FAFC;
+  --bg-card:            #FFFFFF;
+  --bg-hover:           #F1F5F9;
+
+  /* ── 텍스트 ── */
+  --text-primary:       #191F28;
+  --text-secondary:     #4E5968;
+  --text-muted:         #8B95A1;
+
+  /* ── 보더 ── */
+  --border:             #E2E8F0;
+  --border-strong:      #CBD5E1;
+
+  /* ── 형태 ── */
+  --radius:             14px;
+  --radius-sm:          10px;
+  --shadow:             0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-md:          0 4px 24px rgba(0,0,0,0.08);
+
+  /* ── 강의 타입 ── */
+  --online-color:       #3B82F6;
+  --offline-color:      #059669;
+  --self-color:         #8B5CF6;
+  --task-color:         #F59E0B;
+  --exam-color:         #E85D75;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,6 +66,21 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
+
+/* ── 기본 버튼 ── */
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+.btn-primary:hover { background: var(--primary-hover); }
 
 /* ── 토스트 ── */
 #toast {

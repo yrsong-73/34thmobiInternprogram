@@ -6,6 +6,7 @@ import { usePreview } from '@/context/PreviewContext'
 
 const TABS = [
   { id: 'schedule',  href: '/schedule',  icon: 'fa-regular fa-calendar-days', label: '시간표' },
+  { id: 'notice',    href: '/notice',    icon: 'fa-regular fa-bell',           label: '공지' },
   { id: 'dashboard', href: '/dashboard', icon: 'fa-solid fa-chart-simple',     label: '인턴 대시보드', roles: ['CO1', 'Member'] },
   { id: 'record',    href: '/record',    icon: 'fa-regular fa-clipboard',       label: '인턴 기록표',  roles: ['CO1', 'Member'] },
   { id: 'settings',  href: '/settings',  icon: 'fa-solid fa-shield-halved',     label: '권한 관리',   roles: ['CO1'] },
@@ -145,9 +146,9 @@ export default function Nav() {
                 background: 'rgba(255,255,255,0.08)', cursor: 'pointer',
               }}
             >
-              <option value="">-- 인턴 선택 --</option>
+              <option value="" style={{ color: '#1a1a1a', background: '#fff' }}>-- 인턴 선택 --</option>
               {internsList.map(i => (
-                <option key={i.name} value={i.name}>{i.name} ({i.job})</option>
+                <option key={i.name} value={i.name} style={{ color: '#1a1a1a', background: '#fff' }}>{i.name} ({i.job})</option>
               ))}
             </select>
           )}

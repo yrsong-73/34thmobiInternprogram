@@ -7,7 +7,7 @@
  */
 
 import { google } from 'googleapis'
-import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow } from '@/types'
+import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice } from '@/types'
 
 // ──────────────────────────────────────────────
 // 인증 초기화
@@ -302,10 +302,47 @@ export async function getSettings(): Promise<AppSettings> {
   const map: Record<string, string> = {}
   rows.forEach(r => { if (r[0]) map[r[0]] = r[1] || '' })
   return {
-    intern_batch:     map['intern_batch']     || '34',
-    start_date:       map['start_date']       || '',
-    drive_folder_url: map['drive_folder_url'] || '',
+    intern_batch:      map['intern_batch']      || '34',
+    start_date:        map['start_date']        || '',
+    drive_folder_url:  map['drive_folder_url']  || '',
+    submit_folder_url: map['submit_folder_url'] || '',
   }
+}
+
+// ──────────────────────────────────────────────
+// 공지 게시판 (notices 시트)
+// 컬럼: A=title  B=content  C=author  D=created_at
+// ──────────────────────────────────────────────
+
+export async function getNotices(): Promise<Notice[]> {
+  try {
+    const rows = await readSheet('notices!A2:D')
+    return rows
+      .map((r, i) => ({ rowIndex: i + 2, title: r[0] || '', content: r[1] || '', author: r[2] || '', created_at: r[3] || '' }))
+      .filter(n => n.title)
+      .reverse()
+  } catch { return [] }
+}
+
+export async function addNotice(data: Omit<Notice, 'rowIndex'>): Promise<void> {
+  await appendRow('notices', [data.title, data.content, data.author, data.created_at])
+}
+
+export async function updateNotice(rowIndex: number, data: Pick<Notice, 'title' | 'content'>): Promise<void> {
+  const rows = await readSheet('notices!A2:D')
+  const existing = rows[rowIndex - 2] ?? []
+  await updateRow('notices', rowIndex, [data.title, data.content, existing[2] || '', existing[3] || ''])
+}
+
+export async function deleteNotice(rowIndex: number): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'notices')
+  if (!sheet || sheet.properties?.sheetId == null) throw new Error('notices 시트를 찾을 수 없습니다')
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: { requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }] },
+  })
 }
 
 // ──────────────────────────────────────────────

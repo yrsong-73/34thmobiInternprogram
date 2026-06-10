@@ -138,4 +138,17 @@ export interface AppSettings {
   intern_batch: string       // '34'
   start_date: string         // '2026-06-22'
   drive_folder_url: string   // Google Drive 마스터 폴더 URL
+  submit_folder_url: string  // 과제 제출 폴더 URL
+}
+
+// ──────────────────────────────────────────────
+// 공지 게시판
+// ──────────────────────────────────────────────
+
+export interface Notice {
+  rowIndex: number
+  title: string
+  content: string
+  author: string
+  created_at: string
 }

@@ -402,6 +402,7 @@ export default function SchedulePage() {
   const [currentWeek, setCurrentWeek]     = useState<1 | 2>(1)
   const [editRow, setEditRow]             = useState<(Partial<ScheduleRow> & { isNew?: boolean }) | null>(null)
   const [driveUrl, setDriveUrl]           = useState('')
+  const [submitUrl, setSubmitUrl]         = useState('')
   const [completedRows, setCompletedRows] = useState<Set<number>>(new Set())
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
@@ -435,6 +436,7 @@ export default function SchedulePage() {
       const { settings } = await settingsRes.json()
       setAllRows(rows ?? [])
       setDriveUrl(settings?.drive_folder_url ?? '')
+      setSubmitUrl(settings?.submit_folder_url ?? '')
     } finally {
       setLoading(false)
     }
@@ -589,7 +591,12 @@ export default function SchedulePage() {
               <i className="fa-brands fa-google-drive" /> 34기 인턴십 마스터 폴더
             </a>
           )}
-          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>· 교육 자료는 Google Drive에서 확인하세요</span>
+          {submitUrl && (
+            <a href={submitUrl} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '8px', padding: '9px 16px', color: '#FCD34D', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+              <i className="fa-regular fa-folder-open" /> 과제 제출 폴더
+            </a>
+          )}
           {isCO1 && previewMode === 'off' && (
             <span style={{ marginLeft: 'auto', background: 'rgba(255,107,43,0.2)', border: '1px solid rgba(255,107,43,0.4)', color: '#FF9469', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px' }}>
               ✏️ CO1 편집 모드 — 강의 셀 클릭 시 수정

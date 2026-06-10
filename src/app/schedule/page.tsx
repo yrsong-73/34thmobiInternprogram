@@ -406,6 +406,7 @@ export default function SchedulePage() {
   const [completedRows, setCompletedRows] = useState<Set<number>>(new Set())
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
+  const [internJob, setInternJob]         = useState<string>('')
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
@@ -422,9 +423,23 @@ export default function SchedulePage() {
   const effectiveSubs       = previewMode === 'member' ? {} :
                               internPreviewActive ? previewSubmissionsMap : submissionsMap
 
+  // 인턴은 본인 직무 탭에서만 체크/제출 가능 (다른 탭은 읽기 전용)
+  const isRealIntern  = isIntern && previewMode === 'off'
+  const canCheckHere  = effectiveCanCheck && previewMode === 'off' &&
+                        (!isRealIntern || !internJob || currentJob === internJob)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
   }, [status, router])
+
+  // 인턴 본인 직무 조회 → 해당 탭 자동 선택
+  useEffect(() => {
+    if (!isIntern || status !== 'authenticated') return
+    fetch('/api/interns/me')
+      .then(r => r.json())
+      .then(d => { if (d.type) { setInternJob(d.type); setCurrentJob(d.type) } })
+      .catch(() => {})
+  }, [isIntern, status])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -591,15 +606,14 @@ export default function SchedulePage() {
               <i className="fa-brands fa-google-drive" /> 34기 인턴십 마스터 폴더
             </a>
           )}
-          {submitUrl && (
+          {submitUrl ? (
             <a href={submitUrl} target="_blank" rel="noopener noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '8px', padding: '9px 16px', color: '#FCD34D', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
               <i className="fa-regular fa-folder-open" /> 과제 제출 폴더
             </a>
-          )}
-          {isCO1 && previewMode === 'off' && (
-            <span style={{ marginLeft: 'auto', background: 'rgba(255,107,43,0.2)', border: '1px solid rgba(255,107,43,0.4)', color: '#FF9469', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px' }}>
-              ✏️ CO1 편집 모드 — 강의 셀 클릭 시 수정
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.08)', border: '1px dashed rgba(245,158,11,0.25)', borderRadius: '8px', padding: '9px 16px', color: 'rgba(252,211,77,0.45)', fontSize: '13px', fontWeight: 600 }}>
+              <i className="fa-regular fa-folder-open" /> 과제 제출 폴더
             </span>
           )}
           {isCO1 && previewMode !== 'off' && (
@@ -609,13 +623,28 @@ export default function SchedulePage() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          {JOB_TABS.map(tab => (
-            <button key={tab.key} onClick={() => setCurrentJob(tab.key)}
-              style={{ padding: '8px 18px', borderRadius: '20px', border: `1.5px solid ${currentJob === tab.key ? 'var(--mobi-orange)' : 'var(--border-strong)'}`, background: currentJob === tab.key ? 'var(--mobi-orange)' : '#fff', color: currentJob === tab.key ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
-              {tab.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {JOB_TABS.map(tab => {
+            const isActive    = currentJob === tab.key
+            const isHomeTab   = isRealIntern && !!internJob && tab.key === internJob
+            const isReadOnly  = isRealIntern && !!internJob && tab.key !== internJob
+            return (
+              <button key={tab.key} onClick={() => setCurrentJob(tab.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 18px', borderRadius: '20px',
+                  border: `1.5px solid ${isActive ? 'var(--mobi-orange)' : 'var(--border-strong)'}`,
+                  background: isActive ? 'var(--mobi-orange)' : '#fff',
+                  color: isActive ? '#fff' : isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)',
+                  fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+                  opacity: isReadOnly ? 0.7 : 1,
+                }}>
+                {tab.label}
+                {isHomeTab && <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.3)', borderRadius: '10px', padding: '1px 6px' }}>내 직무</span>}
+                {isReadOnly && <span style={{ fontSize: '10px', opacity: 0.7 }}>읽기전용</span>}
+              </button>
+            )
+          })}
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
@@ -813,15 +842,14 @@ export default function SchedulePage() {
                             <span style={{ fontSize: '11px', color: '#000', fontWeight: 600 }}>{lec.duration}</span>
                           </div>
                           {effectiveCanCheck && lec.rowIndex !== undefined && (
-
                             <input
                               type="checkbox"
                               checked={isCompleted}
                               onChange={e => { e.stopPropagation(); toggleComplete(lec.rowIndex!, e) }}
                               onClick={e => e.stopPropagation()}
-                              disabled={previewMode !== 'off'}
-                              title={previewMode !== 'off' ? '미리보기 모드 (읽기 전용)' : '교육 완료 체크'}
-                              style={{ width: '13px', height: '13px', cursor: previewMode === 'off' ? 'pointer' : 'not-allowed', accentColor: color, flexShrink: 0, opacity: previewMode !== 'off' ? 0.6 : 1 }}
+                              disabled={!canCheckHere}
+                              title={!canCheckHere ? (isRealIntern ? '본인 직무 탭에서만 체크 가능' : '읽기 전용') : '교육 완료 체크'}
+                              style={{ width: '13px', height: '13px', cursor: canCheckHere ? 'pointer' : 'not-allowed', accentColor: color, flexShrink: 0, opacity: canCheckHere ? 1 : 0.4 }}
                             />
                           )}
                         </div>
@@ -875,7 +903,7 @@ export default function SchedulePage() {
                                   style={{ fontSize: '9.5px', fontWeight: 700, color: '#059669', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                   ✅ 제출됨
                                 </a>
-                                {previewMode === 'off' && (
+                                {canCheckHere && (
                                   <button
                                     onClick={() => setSubmitTarget(lec)}
                                     style={{ fontSize: '9px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontFamily: 'inherit', textDecoration: 'underline' }}>
@@ -883,7 +911,7 @@ export default function SchedulePage() {
                                   </button>
                                 )}
                               </div>
-                            ) : previewMode === 'off' ? (
+                            ) : canCheckHere ? (
                               <button
                                 onClick={() => setSubmitTarget(lec)}
                                 style={{
@@ -936,15 +964,15 @@ export default function SchedulePage() {
                   }}>
                     {/* 강의평가 */}
                     {day.eval_label && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: effectiveCanCheck && previewMode === 'off' ? 'pointer' : 'default' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: canCheckHere ? 'pointer' : 'default' }}>
                         {effectiveCanCheck && (
                           <input
                             type="checkbox"
                             checked={isEvalDone}
                             onChange={e => toggleComplete(evalRowIndex, e)}
-                            disabled={previewMode !== 'off'}
-                            title={previewMode !== 'off' ? '미리보기 모드 (읽기 전용)' : undefined}
-                            style={{ width: '13px', height: '13px', cursor: previewMode === 'off' ? 'pointer' : 'not-allowed', accentColor: 'var(--mobi-orange)', flexShrink: 0, opacity: previewMode !== 'off' ? 0.6 : 1 }}
+                            disabled={!canCheckHere}
+                            title={!canCheckHere && isRealIntern ? '본인 직무 탭에서만 체크 가능' : undefined}
+                            style={{ width: '13px', height: '13px', cursor: canCheckHere ? 'pointer' : 'not-allowed', accentColor: 'var(--mobi-orange)', flexShrink: 0, opacity: canCheckHere ? 1 : 0.4 }}
                           />
                         )}
                         <span style={{
@@ -959,7 +987,6 @@ export default function SchedulePage() {
                     {/* 과제 제출 버튼들 */}
                     {taskLecs.map(lec => {
                       const submitted = lec.rowIndex !== undefined ? effectiveSubs[lec.rowIndex] : undefined
-                      const canAct = effectiveCanCheck && previewMode === 'off'
                       return (
                         <div key={lec.rowIndex} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                           {effectiveCanCheck && lec.rowIndex !== undefined && (
@@ -967,9 +994,9 @@ export default function SchedulePage() {
                               type="checkbox"
                               checked={effectiveCompleted.has(lec.rowIndex)}
                               onChange={e => toggleComplete(lec.rowIndex!, e)}
-                              disabled={previewMode !== 'off'}
-                              title={previewMode !== 'off' ? '미리보기 모드 (읽기 전용)' : undefined}
-                              style={{ width: '13px', height: '13px', cursor: previewMode === 'off' ? 'pointer' : 'not-allowed', accentColor: '#F59E0B', flexShrink: 0, opacity: previewMode !== 'off' ? 0.6 : 1 }}
+                              disabled={!canCheckHere}
+                              title={!canCheckHere && isRealIntern ? '본인 직무 탭에서만 체크 가능' : undefined}
+                              style={{ width: '13px', height: '13px', cursor: canCheckHere ? 'pointer' : 'not-allowed', accentColor: '#F59E0B', flexShrink: 0, opacity: canCheckHere ? 1 : 0.4 }}
                             />
                           )}
                           {submitted ? (
@@ -978,7 +1005,7 @@ export default function SchedulePage() {
                               title={lec.name}>
                               ✅ {lec.link_labels[0] || lec.name}
                             </a>
-                          ) : canAct ? (
+                          ) : canCheckHere ? (
                             <button
                               onClick={() => setSubmitTarget(lec)}
                               style={{

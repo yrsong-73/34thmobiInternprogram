@@ -320,7 +320,8 @@ export default function DashboardPage() {
                         borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap',
                         ...(frozen ? {
                           position: 'sticky' as const, left: FREEZE_LEFT[i], zIndex: 2,
-                          background: '#F8F7F4', minWidth: FREEZE_MW[i],
+                          background: '#F8F7F4', minWidth: FREEZE_MW[i], width: FREEZE_MW[i],
+                          willChange: 'transform',
                           ...(i === 4 ? { boxShadow: '3px 0 6px rgba(0,0,0,0.07)' } : {}),
                         } : {}),
                       }}>{h}</th>
@@ -349,17 +350,17 @@ export default function DashboardPage() {
                       }}
                     >
                       {/* 직무 — frozen col 0 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110 }}>
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform' }}>
                         <span style={{ fontSize: '11px', fontWeight: 700, color: jobColor, background: jobColor + '18', padding: '2px 8px', borderRadius: '20px' }}>{intern.job}</span>
                       </td>
 
                       {/* 이름 — frozen col 1 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 110, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 90 }}>
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 110, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 90, width: 90, willChange: 'transform' }}>
                         <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
                       </td>
 
                       {/* MBTI / 나이 — frozen col 2 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 200, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110 }}>
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 200, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform' }}>
                         {intern.mbti && <span style={{ fontWeight: 600, color: '#6366F1' }}>{intern.mbti}</span>}
                         {intern.mbti && intern.age && <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>·</span>}
                         {intern.age && <span>{intern.age}</span>}
@@ -367,10 +368,10 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 학교 — frozen col 3 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110 }}>{intern.school}</td>
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform' }}>{intern.school}</td>
 
                       {/* 경력 — frozen col 4 (마지막 고정 + 그림자 구분선) */}
-                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: 260, maxWidth: 400, position: 'sticky', left: 420, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', boxShadow: '3px 0 6px rgba(0,0,0,0.07)' }}>
+                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: 260, width: 260, maxWidth: 400, position: 'sticky', left: 420, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', boxShadow: '3px 0 6px rgba(0,0,0,0.07)', willChange: 'transform' }}>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{intern.career || '—'}</div>
                       </td>
 

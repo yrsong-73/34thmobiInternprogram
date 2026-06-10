@@ -324,7 +324,21 @@ export async function getNotices(): Promise<Notice[]> {
   } catch { return [] }
 }
 
+async function ensureNoticesSheet(): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'notices')
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: 'notices' } } }] },
+    })
+    await appendRow('notices', ['title', 'content', 'author', 'created_at'])
+  }
+}
+
 export async function addNotice(data: Omit<Notice, 'rowIndex'>): Promise<void> {
+  await ensureNoticesSheet()
   await appendRow('notices', [data.title, data.content, data.author, data.created_at])
 }
 

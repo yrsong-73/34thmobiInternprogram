@@ -29,12 +29,12 @@ function renderInline(text: string): React.ReactNode {
     if (remaining.startsWith('**')) {
       const end = remaining.indexOf('**', 2)
       if (end < 0) { parts.push(remaining); break }
-      parts.push(<strong key={key++}>{remaining.slice(2, end)}</strong>)
+      parts.push(<span key={key++} style={{ fontWeight: 700 }}>{remaining.slice(2, end)}</span>)
       remaining = remaining.slice(end + 2)
     } else if (remaining.startsWith('==')) {
       const end = remaining.indexOf('==', 2)
       if (end < 0) { parts.push(remaining); break }
-      parts.push(<mark key={key++} style={{ background: '#FEF08A', borderRadius: '3px', padding: '0 2px' }}>{remaining.slice(2, end)}</mark>)
+      parts.push(<span key={key++} style={{ background: '#FEF08A', borderRadius: '3px', padding: '1px 3px', color: '#78350F' }}>{remaining.slice(2, end)}</span>)
       remaining = remaining.slice(end + 2)
     }
   }
@@ -144,7 +144,7 @@ export default function NoticePage() {
   const { isCO1Real, previewMode } = usePreview()
 
   const role    = (session?.user as any)?.role as string | undefined
-  const canEdit = role === 'CO1' && previewMode === 'off'
+  const canEdit = role === 'CO1'
 
   const [notices,    setNotices]    = useState<Notice[]>([])
   const [loading,    setLoading]    = useState(true)
@@ -172,15 +172,21 @@ export default function NoticePage() {
   }
 
   async function handleSave(title: string, content: string) {
-    if (editTarget?.rowIndex) {
-      await fetch('/api/notices', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rowIndex: editTarget.rowIndex, title, content }) })
-      showToast('✅ 공지가 수정됐습니다')
-    } else {
-      await fetch('/api/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, content }) })
-      showToast('✅ 공지가 추가됐습니다')
+    try {
+      if (editTarget?.rowIndex) {
+        const res = await fetch('/api/notices', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rowIndex: editTarget.rowIndex, title, content }) })
+        if (!res.ok) throw new Error()
+        showToast('✅ 공지가 수정됐습니다')
+      } else {
+        const res = await fetch('/api/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, content }) })
+        if (!res.ok) throw new Error()
+        showToast('✅ 공지가 추가됐습니다')
+      }
+      setEditTarget(null)
+      await fetchNotices()
+    } catch {
+      showToast('⚠️ 저장 실패. 잠시 후 다시 시도해주세요.')
     }
-    setEditTarget(null)
-    await fetchNotices()
   }
 
   async function handleDelete(rowIndex: number) {
@@ -204,8 +210,7 @@ export default function NoticePage() {
       <main style={{ padding: '32px', maxWidth: '860px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📌 공지 게시판</h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>34기 인턴십 공지사항</p>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px' }}>📌 게시판</h1>
           </div>
           {canEdit && (
             <button onClick={() => setEditTarget({ isNew: true })}

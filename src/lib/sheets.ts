@@ -302,10 +302,23 @@ export async function getSettings(): Promise<AppSettings> {
   const map: Record<string, string> = {}
   rows.forEach(r => { if (r[0]) map[r[0]] = r[1] || '' })
   return {
-    intern_batch:      map['intern_batch']      || '34',
-    start_date:        map['start_date']        || '',
-    drive_folder_url:  map['drive_folder_url']  || '',
-    submit_folder_url: map['submit_folder_url'] || '',
+    intern_batch:           map['intern_batch']           || '34',
+    start_date:             map['start_date']             || '',
+    drive_folder_url:       map['drive_folder_url']       || '',
+    submit_folder_url:      map['submit_folder_url']      || '',
+    job_visible_marketing:  map['job_visible_marketing']  !== 'false',
+    job_visible_aiax:       map['job_visible_aiax']       !== 'false',
+    job_visible_biz:        map['job_visible_biz']        !== 'false',
+  }
+}
+
+export async function updateSettingKey(key: string, value: string): Promise<void> {
+  const rows = await readSheet('settings!A2:B')
+  const rowIdx = rows.findIndex(r => r[0] === key)
+  if (rowIdx >= 0) {
+    await updateRow('settings', rowIdx + 2, [key, value])
+  } else {
+    await appendRow('settings', [key, value])
   }
 }
 

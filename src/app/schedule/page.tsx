@@ -407,6 +407,7 @@ export default function SchedulePage() {
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
   const [internJob, setInternJob]         = useState<string>('')
+  const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true })
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
@@ -452,6 +453,11 @@ export default function SchedulePage() {
       setAllRows(rows ?? [])
       setDriveUrl(settings?.drive_folder_url ?? '')
       setSubmitUrl(settings?.submit_folder_url ?? '')
+      setJobVisible({
+        marketing: settings?.job_visible_marketing !== false,
+        aiax:      settings?.job_visible_aiax      !== false,
+        biz:       settings?.job_visible_biz       !== false,
+      })
     } finally {
       setLoading(false)
     }
@@ -584,6 +590,26 @@ export default function SchedulePage() {
     await fetchAll()
   }
 
+  async function toggleJobVisible(key: keyof typeof jobVisible) {
+    const newVal = !jobVisible[key]
+    setJobVisible(prev => ({ ...prev, [key]: newVal }))
+    // Off되는 직무가 현재 탭이면 첫 번째 visible 탭으로 이동
+    if (!newVal && currentJob === key) {
+      const fallback = JOB_TABS.find(t => t.key !== key && jobVisible[t.key as keyof typeof jobVisible])
+      if (fallback) setCurrentJob(fallback.key)
+    }
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [`job_visible_${key}`]: String(newVal) }),
+      })
+    } catch {
+      setJobVisible(prev => ({ ...prev, [key]: !newVal }))
+      showToast('⚠️ 저장 실패. 다시 시도해주세요.')
+    }
+  }
+
   if (status === 'loading' || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>불러오는 중...</div>
@@ -623,25 +649,76 @@ export default function SchedulePage() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {/* CO1 전용: 직무 시간표 On/Off */}
+        {effectiveIsCO1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginRight: '2px' }}>
+              ⚙️ 직무 시간표 공개
+            </span>
+            {JOB_TABS.map(tab => {
+              const on = jobVisible[tab.key as keyof typeof jobVisible]
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => toggleJobVisible(tab.key as keyof typeof jobVisible)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '7px',
+                    padding: '5px 12px', borderRadius: '20px', cursor: 'pointer',
+                    fontFamily: 'inherit', fontSize: '12px', fontWeight: 600,
+                    transition: 'all 0.2s',
+                    border: on ? '1.5px solid #22C55E' : '1.5px dashed var(--border-strong)',
+                    background: on ? 'rgba(34,197,94,0.08)' : 'var(--bg-hover)',
+                    color: on ? '#15803D' : 'var(--text-muted)',
+                  }}
+                >
+                  {/* 토글 스위치 */}
+                  <span style={{
+                    display: 'inline-block', width: '28px', height: '15px',
+                    borderRadius: '999px', background: on ? '#22C55E' : '#CBD5E1',
+                    position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+                  }}>
+                    <span style={{
+                      position: 'absolute', width: '11px', height: '11px',
+                      borderRadius: '50%', background: '#fff',
+                      top: '2px', left: on ? '15px' : '2px',
+                      transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                    }} />
+                  </span>
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* 직무 탭 */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           {JOB_TABS.map(tab => {
-            const isActive    = currentJob === tab.key
-            const isHomeTab   = isRealIntern && !!internJob && tab.key === internJob
-            const isReadOnly  = isRealIntern && !!internJob && tab.key !== internJob
+            const isVisible  = jobVisible[tab.key as keyof typeof jobVisible]
+            const isActive   = currentJob === tab.key
+            const isHomeTab  = isRealIntern && !!internJob && tab.key === internJob
+            const isReadOnly = isRealIntern && !!internJob && tab.key !== internJob
+
+            // 비CO1에게는 Off된 탭 숨기기
+            if (!effectiveIsCO1 && !isVisible) return null
+
             return (
               <button key={tab.key} onClick={() => setCurrentJob(tab.key)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
                   padding: '8px 18px', borderRadius: '20px',
-                  border: `1.5px solid ${isActive ? 'var(--mobi-orange)' : 'var(--border-strong)'}`,
+                  border: `1.5px solid ${isActive ? 'var(--mobi-orange)' : isVisible ? 'var(--border-strong)' : 'var(--border)'}`,
+                  borderStyle: !isVisible ? 'dashed' : 'solid',
                   background: isActive ? 'var(--mobi-orange)' : '#fff',
-                  color: isActive ? '#fff' : isReadOnly ? 'var(--text-muted)' : 'var(--text-secondary)',
+                  color: isActive ? '#fff' : (!isVisible || isReadOnly) ? 'var(--text-muted)' : 'var(--text-secondary)',
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                  opacity: isReadOnly ? 0.7 : 1,
+                  opacity: !isVisible ? 0.5 : isReadOnly ? 0.7 : 1,
                 }}>
                 {tab.label}
-                {isHomeTab && <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.3)', borderRadius: '10px', padding: '1px 6px' }}>내 직무</span>}
-                {isReadOnly && <span style={{ fontSize: '10px', opacity: 0.7 }}>읽기전용</span>}
+                {!isVisible && <span style={{ fontSize: '10px', background: 'rgba(0,0,0,0.08)', borderRadius: '8px', padding: '1px 5px' }}>숨김</span>}
+                {isVisible && isHomeTab && <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.3)', borderRadius: '10px', padding: '1px 6px' }}>내 직무</span>}
+                {isVisible && isReadOnly && <span style={{ fontSize: '10px', opacity: 0.7 }}>읽기전용</span>}
               </button>
             )
           })}

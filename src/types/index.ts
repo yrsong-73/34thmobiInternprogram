@@ -139,6 +139,9 @@ export interface AppSettings {
   start_date: string         // '2026-06-22'
   drive_folder_url: string   // Google Drive 마스터 폴더 URL
   submit_folder_url: string  // 과제 제출 폴더 URL
+  job_visible_marketing: boolean
+  job_visible_aiax: boolean
+  job_visible_biz: boolean
 }
 
 // ──────────────────────────────────────────────

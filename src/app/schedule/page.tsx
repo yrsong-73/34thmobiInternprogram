@@ -452,66 +452,6 @@ function FlowChart({
   )
 }
 
-// ─── PrintSchedule (인쇄 전용) ───────────────────────────────────────────────
-function PrintSchedule({ allRows }: { allRows: ScheduleRow[] }) {
-  const TYPE_LABEL_PRINT: Record<string, string> = {
-    online: '온라인', offline: '오프라인', self: '자기주도',
-    exam: '테스트', task: '과제', lunch: '웰컴런치',
-  }
-  const weeks = [1, 2] as const
-  return (
-    <div className="print-only" style={{ padding: '16px' }}>
-      {weeks.map((week, wi) => {
-        const weekRows = allRows.filter(r => r.week_num === week)
-        const daysMap = new Map<number, { day_num: number; day_label: string; date_label: string }>()
-        weekRows.forEach(r => {
-          if (!daysMap.has(r.day_num)) daysMap.set(r.day_num, { day_num: r.day_num, day_label: r.day_label, date_label: r.date_label })
-        })
-        const days = Array.from(daysMap.values()).sort((a, b) => a.day_num - b.day_num)
-        return (
-          <div key={week} className={wi === 0 ? 'page-break' : ''}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px', color: '#1D4490' }}>
-              {week === 1 ? 'Week 1 · 6/22~6/26' : 'Week 2 · 6/29~7/3'} 교육 시간표
-            </h2>
-            {days.map(day => {
-              const dayLecs = weekRows.filter(r => r.day_num === day.day_num).sort((a, b) => a.sort_order - b.sort_order)
-              return (
-                <div key={day.day_num} style={{ marginBottom: '14px' }}>
-                  <h3 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '5px' }}>
-                    {day.day_label} {day.date_label}
-                  </h3>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '90px' }}>시간</th>
-                        <th>강의명</th>
-                        <th style={{ width: '65px' }}>형태</th>
-                        <th style={{ width: '80px' }}>강사</th>
-                        <th style={{ width: '100px' }}>직무</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dayLecs.map(lec => (
-                        <tr key={lec.rowIndex}>
-                          <td>{lec.time}</td>
-                          <td>{lec.name}</td>
-                          <td>{TYPE_LABEL_PRINT[lec.type] ?? lec.type}</td>
-                          <td>{lec.teacher !== '-' ? lec.teacher : ''}</td>
-                          <td>{lec.job_types.includes('all') ? '전체' : lec.job_types.join(', ')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            })}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 // ─── SubmitTaskModal (Intern용 과제 제출) ────────────────────────────────────
 function SubmitTaskModal({
   lecture,
@@ -814,20 +754,13 @@ export default function SchedulePage() {
   return (
     <>
       <Nav />
-      <main className="no-print" style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '24px' }}>
+      <main style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div className="no-print" style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📅 교육 시간표</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>34기 인턴십 | 직무별 시간표 선택 후 자료 링크를 활용하세요</p>
         </div>
 
-        <FlowChart
-          allRows={allRows}
-          effectiveCompleted={effectiveCompleted}
-          currentJob={currentJob}
-          onHover={setHoveredFlowRow}
-        />
-
-        <div style={{ background: 'var(--mobi-dark)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="no-print" style={{ background: 'var(--mobi-dark)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           {driveUrl && (
             <a href={driveUrl} target="_blank" rel="noopener noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,107,43,0.15)', border: '1px solid rgba(255,107,43,0.3)', borderRadius: '8px', padding: '9px 16px', color: '#FF9469', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
@@ -853,7 +786,7 @@ export default function SchedulePage() {
 
         {/* CO1 전용: 직무 시간표 On/Off */}
         {effectiveIsCO1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+          <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginRight: '2px' }}>
               ⚙️ 직무 시간표 공개
             </span>
@@ -895,7 +828,7 @@ export default function SchedulePage() {
         )}
 
         {/* 직무 탭 */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           {JOB_TABS.map(tab => {
             const isVisible  = jobVisible[tab.key as keyof typeof jobVisible]
             const isActive   = currentJob === tab.key
@@ -926,7 +859,7 @@ export default function SchedulePage() {
           })}
         </div>
 
-        <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           {([1, 2] as const).map(w => (
             <button key={w} onClick={() => setCurrentWeek(w)}
               style={{ padding: '7px 20px', borderRadius: '8px', border: `1.5px solid ${currentWeek === w ? 'var(--mobi-navy)' : 'var(--border)'}`, background: currentWeek === w ? 'var(--mobi-navy)' : '#fff', color: currentWeek === w ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
@@ -940,12 +873,21 @@ export default function SchedulePage() {
           </button>
         </div>
 
+        <div className="no-print">
+          <FlowChart
+            allRows={allRows}
+            effectiveCompleted={effectiveCompleted}
+            currentJob={currentJob}
+            onHover={setHoveredFlowRow}
+          />
+        </div>
+
         {dayGroups.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
             {isCO1 ? '아직 강의가 없습니다. 헤더의 + 강의 추가 버튼을 사용하세요.' : '시간표 준비 중입니다.'}
           </div>
         ) : (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto' }}>
+          <div className="schedule-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto' }}>
 
             {/* 헤더 */}
             <div style={{
@@ -1316,8 +1258,6 @@ export default function SchedulePage() {
           </div>
         )}
       </main>
-
-      <PrintSchedule allRows={allRows} />
 
       {editRow && isCO1 && (
         <EditModal

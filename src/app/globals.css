@@ -123,20 +123,23 @@ body {
 .type-exam    { background: rgba(232,93,117,0.1);  color: var(--exam-color);    border: 1px solid rgba(232,93,117,0.25); }
 .type-lunch   { background: rgba(156,163,175,0.1); color: #6B7280;              border: 1px solid rgba(156,163,175,0.25); }
 
-/* ── 인쇄 ── */
-.print-only { display: none; }
 @keyframes mission-complete {
   0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
   60% { transform: translateX(-50%) scale(1.15); }
   100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
+/* ── 인쇄: 화면 그리드 그대로 출력 ── */
 @media print {
+  @page { size: A4 landscape; margin: 6mm; }
   nav, .no-print { display: none !important; }
-  .print-only { display: block !important; }
-  body { background: white; font-size: 11px; color: #000; }
-  .page-break { page-break-after: always; break-after: page; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-size: 11px; }
-  th { background: #f0f4ff; font-weight: 700; }
+  body { background: white; zoom: 0.68; }
+  /* 스케줄 카드 overflow 해제 */
+  .schedule-card { overflow: visible !important; box-shadow: none !important; border-radius: 0 !important; }
+  /* sticky 헤더 → 일반 블록으로 */
+  .schedule-header { position: relative !important; }
+  /* 인터랙티브 요소 숨김 */
+  input[type="checkbox"] { display: none !important; }
+  button { display: none !important; }
+  a[href] { color: inherit !important; text-decoration: none !important; }
 }

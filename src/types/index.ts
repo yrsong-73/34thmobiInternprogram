@@ -17,11 +17,11 @@ export interface AuthUser {
 // 인턴 데이터
 // ──────────────────────────────────────────────
 
-export type InternJobType = 'marketing' | 'aiax' | 'biz'
+export type InternJobType = 'marketing' | 'marketing_pm' | 'aiax' | 'biz'
 
 export interface Intern {
   name: string
-  job: string                // '마케팅' | 'AI·AX' | '사업기획·전략'
+  job: string                // '마케팅' | '마케팅(PM)' | 'AI·AX' | '사업기획·전략'
   type: InternJobType
   mbti: string
   age: string
@@ -67,7 +67,7 @@ export type LectureType = 'online' | 'offline' | 'self' | 'exam' | 'task' | 'lun
  * I: type       J: teacher    K: duration    L: link_labels (콤마 구분)
  * M: link_urls  (콤마 구분)   N: lunch_with  O: note
  * P: job_types  (all | marketing | aiax | biz, 콤마 구분)
- * Q: count_for_rate (y/빈칸)  R: location
+ * Q: count_for_rate (y/빈칸)  R: location  S: flow_stage
  */
 export interface ScheduleRow {
   rowIndex: number
@@ -89,6 +89,7 @@ export interface ScheduleRow {
   job_types: string[]        // ['all'] or ['marketing','aiax'] 등
   count_for_rate?: boolean   // 수강체크율 분모에 포함 여부 (Q열)
   location?: string          // 강의 장소 (R열)
+  flow_stage?: string        // 교육 흐름 단계 (S열): '회사의 이해'|'직무 기초'|'직무 심화'|'과제 수행'
 }
 
 /** 하루 단위 묶음 (UI 렌더링용) */

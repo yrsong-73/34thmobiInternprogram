@@ -16,9 +16,10 @@ function showToast(msg: string) {
 
 
 const JOB_COLOR: Record<string, string> = {
-  marketing: '#FF6B2B',
-  aiax:      '#3B82F6',
-  biz:       '#8B5CF6',
+  marketing:    '#FF6B2B',
+  marketing_pm: '#FF8C42',
+  aiax:         '#3B82F6',
+  biz:          '#8B5CF6',
 }
 
 const DATE_FILTERS = [

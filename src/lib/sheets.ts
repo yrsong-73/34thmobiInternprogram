@@ -83,9 +83,10 @@ async function clearRow(sheetName: string, rowIndex: number): Promise<void> {
 //       test_top | test_bottom
 // ──────────────────────────────────────────────
 
-function jobToType(job: string): 'marketing' | 'aiax' | 'biz' {
+function jobToType(job: string): 'marketing' | 'marketing_pm' | 'aiax' | 'biz' {
   if (job.includes('AI') || job.includes('AX')) return 'aiax'
   if (job.includes('사업') || job.includes('전략')) return 'biz'
+  if (job.includes('PM')) return 'marketing_pm'
   return 'marketing'
 }
 
@@ -96,7 +97,7 @@ export async function getInterns(): Promise<Intern[]> {
     .map((r, i) => ({
       name:            r[0] || '',
       job:             r[1] || '',
-      type:            ((r[2] as any) || jobToType(r[1])) as 'marketing' | 'aiax' | 'biz',
+      type:            ((r[2] as any) || jobToType(r[1])) as 'marketing' | 'marketing_pm' | 'aiax' | 'biz',
       mbti:            r[3] || '',
       age:             r[4] || '',
       school:          r[5] || '',
@@ -389,7 +390,7 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rows = await readSheet('schedule!A2:R')
+  const rows = await readSheet('schedule!A2:S')
   return rows
     .filter(r => r[0] && r[7]) // week_num, name 필수
     .map((r, i) => ({
@@ -412,6 +413,7 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       job_types:      parseComma(r[15]) || ['all'],
       count_for_rate: r[16]?.toLowerCase() === 'y',
       location:       r[17] || '',
+      flow_stage:     r[18] || '',
     }))
 }
 
@@ -435,6 +437,7 @@ function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number
     d.job_types.join(','),
     d.count_for_rate ? 'y' : '',
     d.location || '',
+    d.flow_stage || '',
   ]
 }
 

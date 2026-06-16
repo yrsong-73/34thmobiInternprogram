@@ -91,6 +91,8 @@ function EditModal({
   onClose: () => void
   isCO1: boolean
 }) {
+  const FLOW_STAGE_OPTIONS = ['', '회사의 이해', '직무 기초', '직무 심화', '과제 수행']
+
   // 기본 필드
   const [form, setForm] = useState({
     time:       row.time       ?? '',
@@ -101,6 +103,7 @@ function EditModal({
     duration:   row.duration   ?? '',
     lunch_with: row.lunch_with ?? '',
     note:       row.note       ?? '',
+    flow_stage: row.flow_stage ?? '',
   })
   // 자료 링크: [{label, url}, ...]
   const initLinks = (() => {
@@ -162,7 +165,9 @@ function EditModal({
       link_urls:   validLinks.map(r => r.url.trim()),
       lunch_with:  form.lunch_with,
       note:        form.note,
-      job_types:   jobTypes.length > 0 ? jobTypes : ['all'],
+      job_types:      jobTypes.length > 0 ? jobTypes : ['all'],
+      count_for_rate: row.count_for_rate ?? false,
+      flow_stage:     form.flow_stage,
     })
     setSaving(false)
   }
@@ -269,6 +274,16 @@ function EditModal({
             <input style={inputStyle} value={form.note} onChange={e => set('note', e.target.value)} placeholder="예: K-ITAS 가입 신청서 제출" />
           </div>
 
+          {/* 교육 흐름 단계 */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={labelStyle}>교육 흐름 단계</label>
+            <select style={inputStyle} value={form.flow_stage} onChange={e => set('flow_stage', e.target.value)}>
+              {FLOW_STAGE_OPTIONS.map(s => (
+                <option key={s} value={s}>{s || '(미지정)'}</option>
+              ))}
+            </select>
+          </div>
+
           {/* 대상 직무 — 토글 버튼 */}
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>대상 직무</label>
@@ -315,6 +330,197 @@ function EditModal({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── FlowChart (교육 흐름 차트) ──────────────────────────────────────────────
+const FLOW_STAGES = ['회사의 이해', '직무 기초', '직무 심화', '과제 수행']
+
+function FlowChart({
+  allRows,
+  effectiveCompleted,
+  currentJob,
+  onHover,
+}: {
+  allRows: ScheduleRow[]
+  effectiveCompleted: Set<number>
+  currentJob: string
+  onHover: (rowIndex: number | null) => void
+}) {
+  const relevantRows = allRows.filter(r =>
+    r.flow_stage &&
+    (r.job_types.includes('all') || r.job_types.includes(currentJob))
+  )
+
+  const stageGroups = FLOW_STAGES.map(stage => {
+    const lectures = relevantRows.filter(r => r.flow_stage === stage)
+    const completedCount = lectures.filter(r => effectiveCompleted.has(r.rowIndex)).length
+    const allDone = lectures.length > 0 && completedCount === lectures.length
+    return { stage, lectures, completedCount, allDone }
+  }).filter(g => g.lectures.length > 0)
+
+  if (stageGroups.length === 0) return null
+
+  return (
+    <div style={{
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius)',
+      boxShadow: 'var(--shadow)',
+      padding: '18px 22px',
+      marginBottom: '18px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '14px', letterSpacing: '0.3px' }}>
+        🗺️ 교육 흐름
+      </div>
+      <div style={{ display: 'flex', gap: '0', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '6px' }}>
+        {stageGroups.map((group, idx) => {
+          const pct = group.lectures.length > 0 ? Math.round(group.completedCount / group.lectures.length * 100) : 0
+          return (
+            <div key={group.stage} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
+              <div style={{
+                width: '176px',
+                background: group.allDone ? 'linear-gradient(135deg, #F0FDF4, #DCFCE7)' : 'var(--bg-main)',
+                border: `1.5px solid ${group.allDone ? '#22C55E' : 'var(--border-strong)'}`,
+                borderRadius: '12px',
+                padding: '14px 13px 12px',
+                position: 'relative',
+                marginTop: '16px',
+                transition: 'border-color 0.3s',
+              }}>
+                {group.allDone && (
+                  <div style={{
+                    position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #22C55E, #16A34A)',
+                    color: '#fff', fontSize: '10px', fontWeight: 800,
+                    padding: '2px 10px', borderRadius: '999px',
+                    whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(34,197,94,0.4)',
+                    animation: 'mission-complete 0.6s ease',
+                  }}>
+                    🎉 미션 컴플릿!
+                  </div>
+                )}
+                <div style={{ marginBottom: '5px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: group.allDone ? '#15803D' : 'var(--text-primary)' }}>
+                    {group.stage}
+                  </div>
+                  <div style={{ fontSize: '10px', color: group.allDone ? '#22C55E' : 'var(--text-muted)', fontWeight: 600, marginTop: '1px' }}>
+                    {group.completedCount}/{group.lectures.length} 완료
+                  </div>
+                </div>
+                <div style={{ height: '4px', background: 'var(--border)', borderRadius: '999px', marginBottom: '10px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: '999px',
+                    width: `${pct}%`,
+                    background: group.allDone ? '#22C55E' : 'var(--primary)',
+                    transition: 'width 0.4s ease',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {group.lectures.map(lec => {
+                    const done = effectiveCompleted.has(lec.rowIndex)
+                    return (
+                      <div
+                        key={lec.rowIndex}
+                        onMouseEnter={() => onHover(lec.rowIndex)}
+                        onMouseLeave={() => onHover(null)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '5px',
+                          padding: '4px 7px', borderRadius: '7px', cursor: 'pointer',
+                          background: done ? 'rgba(34,197,94,0.08)' : '#fff',
+                          border: `1px solid ${done ? 'rgba(34,197,94,0.3)' : 'var(--border)'}`,
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', flexShrink: 0, lineHeight: 1 }}>
+                          {done ? '✅' : '○'}
+                        </span>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 600,
+                          color: done ? '#15803D' : 'var(--text-primary)',
+                          textDecoration: done ? 'line-through' : 'none',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {lec.name}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              {idx < stageGroups.length - 1 && (
+                <div style={{
+                  padding: '0 5px',
+                  fontSize: '18px', color: 'var(--border-strong)',
+                  flexShrink: 0, alignSelf: 'flex-start',
+                  marginTop: '48px',
+                }}>→</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── PrintSchedule (인쇄 전용) ───────────────────────────────────────────────
+function PrintSchedule({ allRows }: { allRows: ScheduleRow[] }) {
+  const TYPE_LABEL_PRINT: Record<string, string> = {
+    online: '온라인', offline: '오프라인', self: '자기주도',
+    exam: '테스트', task: '과제', lunch: '웰컴런치',
+  }
+  const weeks = [1, 2] as const
+  return (
+    <div className="print-only" style={{ padding: '16px' }}>
+      {weeks.map((week, wi) => {
+        const weekRows = allRows.filter(r => r.week_num === week)
+        const daysMap = new Map<number, { day_num: number; day_label: string; date_label: string }>()
+        weekRows.forEach(r => {
+          if (!daysMap.has(r.day_num)) daysMap.set(r.day_num, { day_num: r.day_num, day_label: r.day_label, date_label: r.date_label })
+        })
+        const days = Array.from(daysMap.values()).sort((a, b) => a.day_num - b.day_num)
+        return (
+          <div key={week} className={wi === 0 ? 'page-break' : ''}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px', color: '#1D4490' }}>
+              {week === 1 ? 'Week 1 · 6/22~6/26' : 'Week 2 · 6/29~7/3'} 교육 시간표
+            </h2>
+            {days.map(day => {
+              const dayLecs = weekRows.filter(r => r.day_num === day.day_num).sort((a, b) => a.sort_order - b.sort_order)
+              return (
+                <div key={day.day_num} style={{ marginBottom: '14px' }}>
+                  <h3 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '5px' }}>
+                    {day.day_label} {day.date_label}
+                  </h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '90px' }}>시간</th>
+                        <th>강의명</th>
+                        <th style={{ width: '65px' }}>형태</th>
+                        <th style={{ width: '80px' }}>강사</th>
+                        <th style={{ width: '100px' }}>직무</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dayLecs.map(lec => (
+                        <tr key={lec.rowIndex}>
+                          <td>{lec.time}</td>
+                          <td>{lec.name}</td>
+                          <td>{TYPE_LABEL_PRINT[lec.type] ?? lec.type}</td>
+                          <td>{lec.teacher !== '-' ? lec.teacher : ''}</td>
+                          <td>{lec.job_types.includes('all') ? '전체' : lec.job_types.join(', ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -408,6 +614,7 @@ export default function SchedulePage() {
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
   const [internJob, setInternJob]         = useState<string>('')
   const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true })
+  const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
@@ -426,8 +633,9 @@ export default function SchedulePage() {
 
   // 인턴은 본인 직무 탭에서만 체크/제출 가능 (다른 탭은 읽기 전용)
   const isRealIntern  = isIntern && previewMode === 'off'
+  const internJobTab  = internJob === 'marketing_pm' ? 'marketing' : internJob
   const canCheckHere  = effectiveCanCheck && previewMode === 'off' &&
-                        (!isRealIntern || !internJob || currentJob === internJob)
+                        (!isRealIntern || !internJobTab || currentJob === internJobTab)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
@@ -438,7 +646,7 @@ export default function SchedulePage() {
     if (!isIntern || status !== 'authenticated') return
     fetch('/api/interns/me')
       .then(r => r.json())
-      .then(d => { if (d.type) { setInternJob(d.type); setCurrentJob(d.type) } })
+      .then(d => { if (d.type) { setInternJob(d.type); setCurrentJob(d.type === 'marketing_pm' ? 'marketing' : d.type) } })
       .catch(() => {})
   }, [isIntern, status])
 
@@ -477,7 +685,7 @@ export default function SchedulePage() {
         setPreviewSubmissionsMap(map)
         // 인턴 직무 탭 자동 선택
         const intern = previewInternsList.find(i => i.name === previewInternName)
-        if (intern) setCurrentJob(intern.type)
+        if (intern) setCurrentJob(intern.type === 'marketing_pm' ? 'marketing' : intern.type)
       })
       .catch(() => {})
   }, [previewInternName, previewInternsList])
@@ -619,11 +827,18 @@ export default function SchedulePage() {
   return (
     <>
       <Nav />
-      <main style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
+      <main className="no-print" style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📅 교육 시간표</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>34기 인턴십 | 직무별 시간표 선택 후 자료 링크를 활용하세요</p>
         </div>
+
+        <FlowChart
+          allRows={allRows}
+          effectiveCompleted={effectiveCompleted}
+          currentJob={currentJob}
+          onHover={setHoveredFlowRow}
+        />
 
         <div style={{ background: 'var(--mobi-dark)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           {driveUrl && (
@@ -697,8 +912,8 @@ export default function SchedulePage() {
           {JOB_TABS.map(tab => {
             const isVisible  = jobVisible[tab.key as keyof typeof jobVisible]
             const isActive   = currentJob === tab.key
-            const isHomeTab  = isRealIntern && !!internJob && tab.key === internJob
-            const isReadOnly = isRealIntern && !!internJob && tab.key !== internJob
+            const isHomeTab  = isRealIntern && !!internJobTab && tab.key === internJobTab
+            const isReadOnly = isRealIntern && !!internJobTab && tab.key !== internJobTab
 
             // 비CO1에게는 Off된 탭 숨기기
             if (!effectiveIsCO1 && !isVisible) return null
@@ -724,13 +939,18 @@ export default function SchedulePage() {
           })}
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
           {([1, 2] as const).map(w => (
             <button key={w} onClick={() => setCurrentWeek(w)}
               style={{ padding: '7px 20px', borderRadius: '8px', border: `1.5px solid ${currentWeek === w ? 'var(--mobi-navy)' : 'var(--border)'}`, background: currentWeek === w ? 'var(--mobi-navy)' : '#fff', color: currentWeek === w ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               {w === 1 ? 'Week 1 · 6/22~6/26 공통+직무별 교육' : 'Week 2 · 6/29~7/3 과제 수행 및 최종 발표'}
             </button>
           ))}
+          <button
+            onClick={() => window.print()}
+            style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: '#fff', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🖨️ 인쇄
+          </button>
         </div>
 
         {dayGroups.length === 0 ? (
@@ -885,15 +1105,17 @@ export default function SchedulePage() {
                           background: isCompleted ? '#F3F4F6' : bg,
                           borderLeft: `3px solid ${isCompleted ? '#9CA3AF' : color}`,
                           boxSizing: 'border-box' as const,
-                          zIndex: 3,
+                          zIndex: hoveredFlowRow === lec.rowIndex ? 5 : 3,
                           overflow: 'hidden',
                           alignSelf: 'stretch',
                           cursor: effectiveIsCO1 ? 'pointer' : 'default',
                           opacity: isCompleted ? 0.65 : 1,
                           position: 'relative' as const,
-                          transition: 'opacity 0.2s',
+                          transition: 'all 0.2s',
                           display: 'flex',
                           flexDirection: 'column' as const,
+                          outline: hoveredFlowRow === lec.rowIndex ? '2px solid var(--primary)' : undefined,
+                          boxShadow: hoveredFlowRow === lec.rowIndex ? '0 0 0 4px rgba(29,68,144,0.12)' : undefined,
                         }}
                         onClick={() => { if (effectiveIsCO1) setEditRow(lec) }}
                       >
@@ -1107,6 +1329,8 @@ export default function SchedulePage() {
           </div>
         )}
       </main>
+
+      <PrintSchedule allRows={allRows} />
 
       {editRow && isCO1 && (
         <EditModal

@@ -995,10 +995,9 @@ export default function SchedulePage() {
                       }
                     }}
                   >
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#B45309' }}>🍽️ 웰컴런치</span>
-                    <span style={{ fontSize: '9.5px', fontWeight: 500, color: '#92400E' }}>{lunchLec?.time?.replace('~', ' ~ ') || '12:00 ~ 13:30'}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#B45309' }}>🍽️ 웰컴런치 및 간담회</span>
                     {lunchLec?.lunch_with ? (
-                      <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 500 }}>👥 {lunchLec.lunch_with}</span>
+                      <span style={{ fontSize: '13px', color: '#B45309', fontWeight: 600 }}>👥 {lunchLec.lunch_with}</span>
                     ) : isCO1 ? (
                       <span style={{ fontSize: '9px', color: '#D97706', fontWeight: 400, fontStyle: 'italic' }}>+ 동행자 추가</span>
                     ) : null}

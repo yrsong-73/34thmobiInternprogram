@@ -48,7 +48,7 @@ async function appendRow(sheetName: string, values: (string | number)[]): Promis
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
     range: `${sheetName}!A1`,
-    valueInputOption: 'USER_ENTERED',
+    valueInputOption: 'RAW',
     requestBody: { values: [values] },
   })
 }
@@ -63,7 +63,7 @@ async function updateRow(
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
     range,
-    valueInputOption: 'USER_ENTERED',
+    valueInputOption: 'RAW',
     requestBody: { values: [values] },
   })
 }

@@ -390,10 +390,18 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rows = await readSheet('schedule!A2:S')
-  return rows
-    .filter(r => r[0] && r[7]) // week_num, name 필수
-    .map((r, i) => ({
+  const rawRows = await readSheet('schedule!A2:R')
+  let currentStage = ''
+  const result: ScheduleRow[] = []
+  rawRows.forEach((r, i) => {
+    const bVal = r[1]
+    if (bVal && isNaN(Number(bVal))) {
+      // B열이 문자열 → flow stage 마커 행
+      currentStage = bVal
+      return
+    }
+    if (!r[0] || !r[7]) return // week_num, name 필수
+    result.push({
       rowIndex:   i + 2,
       week_num:   Number(r[0]) || 1,
       day_num:    Number(r[1]) || 1,
@@ -413,8 +421,10 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       job_types:      parseComma(r[15]) || ['all'],
       count_for_rate: r[16]?.toLowerCase() === 'y',
       location:       r[17] || '',
-      flow_stage:     r[18] || '',
-    }))
+      flow_stage:     currentStage,
+    })
+  })
+  return result
 }
 
 function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number)[] {
@@ -437,7 +447,6 @@ function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number
     d.job_types.join(','),
     d.count_for_rate ? 'y' : '',
     d.location || '',
-    d.flow_stage || '',
   ]
 }
 

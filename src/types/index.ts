@@ -89,7 +89,7 @@ export interface ScheduleRow {
   job_types: string[]        // ['all'] or ['marketing','aiax'] 등
   count_for_rate?: boolean   // 수강체크율 분모에 포함 여부 (Q열)
   location?: string          // 강의 장소 (R열)
-  flow_stage?: string        // 교육 흐름 단계 (S열): '회사의 이해'|'직무 기초'|'직무 심화'|'과제 수행'
+  flow_stage?: string        // 교육 흐름 단계 — schedule 시트 B열 마커 행에서 자동 상속
 }
 
 /** 하루 단위 묶음 (UI 렌더링용) */

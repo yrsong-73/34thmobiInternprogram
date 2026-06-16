@@ -33,7 +33,7 @@ GRID_SLOTS.forEach((t, i) => { SLOT_ROW[t] = i + 1 })
 SLOT_ROW['19:00'] = 19
 
 const LUNCH_SR = SLOT_ROW['12:00']
-const LUNCH_ER = SLOT_ROW['13:00']
+const LUNCH_ER = SLOT_ROW['13:30']
 
 function parseRows(timeStr: string): { sr: number; er: number } | null {
   if (!timeStr || timeStr === '최종') return { sr: 18, er: 19 }
@@ -91,8 +91,6 @@ function EditModal({
   onClose: () => void
   isCO1: boolean
 }) {
-  const FLOW_STAGE_OPTIONS = ['', '회사의 이해', '직무 기초', '직무 심화', '과제 수행']
-
   // 기본 필드
   const [form, setForm] = useState({
     time:       row.time       ?? '',
@@ -103,7 +101,6 @@ function EditModal({
     duration:   row.duration   ?? '',
     lunch_with: row.lunch_with ?? '',
     note:       row.note       ?? '',
-    flow_stage: row.flow_stage ?? '',
   })
   // 자료 링크: [{label, url}, ...]
   const initLinks = (() => {
@@ -167,7 +164,7 @@ function EditModal({
       note:        form.note,
       job_types:      jobTypes.length > 0 ? jobTypes : ['all'],
       count_for_rate: row.count_for_rate ?? false,
-      flow_stage:     form.flow_stage,
+      flow_stage:     row.flow_stage ?? '',
     })
     setSaving(false)
   }
@@ -272,16 +269,6 @@ function EditModal({
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>비고 / 과제 안내</label>
             <input style={inputStyle} value={form.note} onChange={e => set('note', e.target.value)} placeholder="예: K-ITAS 가입 신청서 제출" />
-          </div>
-
-          {/* 교육 흐름 단계 */}
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={labelStyle}>교육 흐름 단계</label>
-            <select style={inputStyle} value={form.flow_stage} onChange={e => set('flow_stage', e.target.value)}>
-              {FLOW_STAGE_OPTIONS.map(s => (
-                <option key={s} value={s}>{s || '(미지정)'}</option>
-              ))}
-            </select>
           </div>
 
           {/* 대상 직무 — 토글 버튼 */}
@@ -1059,7 +1046,7 @@ export default function SchedulePage() {
                           isNew: true,
                           ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label, 0),
                           type: 'lunch' as LectureType,
-                          time: '12:00~13:00',
+                          time: '12:00~13:30',
                           name: '웰컴런치',
                           duration: '1h',
                         })
@@ -1067,9 +1054,9 @@ export default function SchedulePage() {
                     }}
                   >
                     <span style={{ fontSize: '12px', fontWeight: 700, color: '#B45309' }}>🍽️ 웰컴런치</span>
-                    <span style={{ fontSize: '9.5px', fontWeight: 500, color: '#92400E' }}>12:00 ~ 13:00</span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 500, color: '#92400E' }}>{lunchLec?.time?.replace('~', ' ~ ') || '12:00 ~ 13:30'}</span>
                     {lunchLec?.lunch_with ? (
-                      <span style={{ fontSize: '9.5px', color: '#B45309', fontWeight: 500 }}>👥 {lunchLec.lunch_with}</span>
+                      <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 500 }}>👥 {lunchLec.lunch_with}</span>
                     ) : isCO1 ? (
                       <span style={{ fontSize: '9px', color: '#D97706', fontWeight: 400, fontStyle: 'italic' }}>+ 동행자 추가</span>
                     ) : null}

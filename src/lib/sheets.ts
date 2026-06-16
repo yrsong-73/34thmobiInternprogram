@@ -7,7 +7,7 @@
  */
 
 import { google } from 'googleapis'
-import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice } from '@/types'
+import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment } from '@/types'
 
 // ──────────────────────────────────────────────
 // 인증 초기화
@@ -367,6 +367,57 @@ export async function deleteNotice(rowIndex: number): Promise<void> {
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
   const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'notices')
   if (!sheet || sheet.properties?.sheetId == null) throw new Error('notices 시트를 찾을 수 없습니다')
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: { requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }] },
+  })
+}
+
+// ──────────────────────────────────────────────
+// 공지 댓글 (notice_comments 시트)
+//
+// 컬럼: A=notice_id  B=author  C=content  D=created_at  E=role
+// ──────────────────────────────────────────────
+
+async function ensureNoticeCommentsSheet(): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'notice_comments')
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: 'notice_comments' } } }] },
+    })
+    await appendRow('notice_comments', ['notice_id', 'author', 'content', 'created_at', 'role'])
+  }
+}
+
+export async function getNoticeComments(noticeId: number): Promise<NoticeComment[]> {
+  try {
+    const rows = await readSheet('notice_comments!A2:E')
+    return rows
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        notice_id: Number(r[0]) || 0,
+        author: r[1] || '',
+        content: r[2] || '',
+        created_at: r[3] || '',
+        role: r[4] || 'Intern',
+      }))
+      .filter(c => c.notice_id === noticeId && c.content)
+  } catch { return [] }
+}
+
+export async function addNoticeComment(data: Omit<NoticeComment, 'rowIndex'>): Promise<void> {
+  await ensureNoticeCommentsSheet()
+  await appendRow('notice_comments', [data.notice_id, data.author, data.content, data.created_at, data.role])
+}
+
+export async function deleteNoticeComment(rowIndex: number): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'notice_comments')
+  if (!sheet || sheet.properties?.sheetId == null) throw new Error('notice_comments 시트를 찾을 수 없습니다')
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SHEET_ID,
     requestBody: { requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }] },

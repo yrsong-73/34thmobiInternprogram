@@ -132,6 +132,19 @@ export interface UserPermission {
 }
 
 // ──────────────────────────────────────────────
+// 공지 댓글
+// ──────────────────────────────────────────────
+
+export interface NoticeComment {
+  rowIndex: number
+  notice_id: number   // 부모 공지 rowIndex
+  author: string
+  content: string
+  created_at: string
+  role: string        // CO1 | Member | Intern
+}
+
+// ──────────────────────────────────────────────
 // 설정
 // ──────────────────────────────────────────────
 

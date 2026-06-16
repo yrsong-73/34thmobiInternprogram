@@ -2,10 +2,10 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
 import { usePreview } from '@/context/PreviewContext'
-import type { Notice } from '@/types'
+import type { Notice, NoticeComment } from '@/types'
 
 function showToast(msg: string) {
   const el = document.getElementById('toast')
@@ -15,7 +15,7 @@ function showToast(msg: string) {
   setTimeout(() => el.classList.remove('show'), 2200)
 }
 
-// ── 인라인 마크다운 렌더러 (**굵게**, ==형광==) ──────────────────────
+// ── 마크다운 렌더러 ──────────────────────────────────────────────────
 function renderInline(text: string): React.ReactNode {
   const parts: React.ReactNode[] = []
   let remaining = text
@@ -25,7 +25,7 @@ function renderInline(text: string): React.ReactNode {
     const hlIdx   = remaining.indexOf('==')
     const next    = Math.min(boldIdx >= 0 ? boldIdx : Infinity, hlIdx >= 0 ? hlIdx : Infinity)
     if (next === Infinity) { parts.push(remaining); break }
-    if (next > 0) { parts.push(remaining.slice(0, next)); remaining = remaining.slice(next) }
+    if (next > 0) { parts.push(remaining.slice(0, next)); remaining = remaining.slice(next); continue }
     if (remaining.startsWith('**')) {
       const end = remaining.indexOf('**', 2)
       if (end < 0) { parts.push(remaining); break }
@@ -36,6 +36,8 @@ function renderInline(text: string): React.ReactNode {
       if (end < 0) { parts.push(remaining); break }
       parts.push(<span key={key++} style={{ background: '#FEF08A', borderRadius: '3px', padding: '1px 3px', color: '#78350F' }}>{remaining.slice(2, end)}</span>)
       remaining = remaining.slice(end + 2)
+    } else {
+      parts.push(remaining[0]); remaining = remaining.slice(1)
     }
   }
   return <>{parts}</>
@@ -46,9 +48,9 @@ function renderContent(text: string): React.ReactNode {
     <>
       {text.split('\n').map((line, i) => {
         if (line.startsWith('# '))
-          return <div key={i} style={{ fontSize: '15px', fontWeight: 700, margin: '10px 0 4px' }}>{line.slice(2)}</div>
+          return <div key={i} style={{ fontSize: '15px', fontWeight: 700, margin: '10px 0 4px' }}>{renderInline(line.slice(2))}</div>
         if (line.startsWith('## '))
-          return <div key={i} style={{ fontSize: '13.5px', fontWeight: 700, margin: '8px 0 3px', color: 'var(--text-secondary)' }}>{line.slice(3)}</div>
+          return <div key={i} style={{ fontSize: '13.5px', fontWeight: 700, margin: '8px 0 3px', color: 'var(--text-secondary)' }}>{renderInline(line.slice(3))}</div>
         if (line.startsWith('- '))
           return (
             <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '3px', paddingLeft: '4px' }}>
@@ -66,6 +68,45 @@ function renderContent(text: string): React.ReactNode {
   )
 }
 
+// ── 마크다운 툴바 헬퍼 ───────────────────────────────────────────────
+function applyFormat(
+  ta: HTMLTextAreaElement,
+  content: string,
+  setContent: (v: string) => void,
+  type: 'wrap' | 'linePrefix' | 'insert',
+  a: string,
+  b = '',
+  sample = '텍스트'
+) {
+  const ss = ta.selectionStart
+  const se = ta.selectionEnd
+
+  if (type === 'wrap') {
+    const selected = content.slice(ss, se) || sample
+    const newContent = content.slice(0, ss) + a + selected + b + content.slice(se)
+    setContent(newContent)
+    setTimeout(() => {
+      ta.focus()
+      ta.setSelectionRange(ss + a.length, ss + a.length + selected.length)
+    }, 0)
+  } else if (type === 'linePrefix') {
+    const lineStart = content.lastIndexOf('\n', ss - 1) + 1
+    const newContent = content.slice(0, lineStart) + a + content.slice(lineStart)
+    setContent(newContent)
+    setTimeout(() => {
+      ta.focus()
+      ta.setSelectionRange(ss + a.length, ss + a.length)
+    }, 0)
+  } else {
+    const newContent = content.slice(0, ss) + a + content.slice(se)
+    setContent(newContent)
+    setTimeout(() => {
+      ta.focus()
+      ta.setSelectionRange(ss + a.length, ss + a.length)
+    }, 0)
+  }
+}
+
 // ── 편집 모달 (CO1 전용) ────────────────────────────────────────────
 function NoticeEditModal({ notice, onSave, onClose }: {
   notice: Partial<Notice> & { isNew?: boolean }
@@ -76,12 +117,26 @@ function NoticeEditModal({ notice, onSave, onClose }: {
   const [content, setContent] = useState(notice.content ?? '')
   const [saving,  setSaving]  = useState(false)
   const [preview, setPreview] = useState(false)
+  const taRef = useRef<HTMLTextAreaElement>(null)
 
   async function handleSave() {
     if (!title.trim()) { showToast('⚠️ 제목을 입력해주세요'); return }
     setSaving(true)
     await onSave(title, content)
     setSaving(false)
+  }
+
+  function fmt(a: string, b: string, sample: string) {
+    if (!taRef.current) return
+    applyFormat(taRef.current, content, setContent, 'wrap', a, b, sample)
+  }
+  function pfx(a: string) {
+    if (!taRef.current) return
+    applyFormat(taRef.current, content, setContent, 'linePrefix', a)
+  }
+  function ins(a: string) {
+    if (!taRef.current) return
+    applyFormat(taRef.current, content, setContent, 'insert', a)
   }
 
   const inputS: React.CSSProperties = {
@@ -95,6 +150,12 @@ function NoticeEditModal({ notice, onSave, onClose }: {
     background: active ? 'var(--mobi-orange)' : '#fff',
     color: active ? '#fff' : 'var(--text-secondary)',
   })
+  const toolBtn: React.CSSProperties = {
+    padding: '3px 10px', borderRadius: '5px', border: '1px solid var(--border)',
+    background: '#fff', color: 'var(--text-secondary)', fontSize: '12px',
+    fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+    transition: 'background 0.1s',
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
@@ -108,18 +169,28 @@ function NoticeEditModal({ notice, onSave, onClose }: {
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="공지 제목"
           style={{ ...inputS, fontSize: '15px', fontWeight: 600, marginBottom: '12px' }} />
 
+        {/* 편집 / 미리보기 탭 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <button style={tabBtn(!preview)} onClick={() => setPreview(false)}>편집</button>
           <button style={tabBtn(preview)}  onClick={() => setPreview(true)}>미리보기</button>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }}>
-            **굵게** &nbsp;==형광== &nbsp;# 제목 &nbsp;## 소제목 &nbsp;- 목록 &nbsp;--- 구분선
-          </span>
         </div>
 
         {!preview ? (
-          <textarea value={content} onChange={e => setContent(e.target.value)} rows={14}
-            placeholder={'내용을 입력하세요\n\n# 대제목\n## 소제목\n- 목록 항목\n**굵게** ==형광펜==\n---'}
-            style={{ ...inputS, fontSize: '13.5px', resize: 'vertical', lineHeight: 1.65 }} />
+          <>
+            {/* 마크다운 툴바 */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button style={{ ...toolBtn, fontWeight: 900 }} onClick={() => fmt('**', '**', '굵게')}>B</button>
+              <button style={{ ...toolBtn, background: '#FEF08A', color: '#78350F' }} onClick={() => fmt('==', '==', '형광')}>형광</button>
+              <button style={toolBtn} onClick={() => pfx('# ')}># H1</button>
+              <button style={toolBtn} onClick={() => pfx('## ')}>## H2</button>
+              <button style={toolBtn} onClick={() => pfx('- ')}>• 목록</button>
+              <button style={toolBtn} onClick={() => ins('\n---\n')}>─── 구분선</button>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }}>텍스트 선택 후 클릭하면 적용</span>
+            </div>
+            <textarea ref={taRef} value={content} onChange={e => setContent(e.target.value)} rows={14}
+              placeholder={'내용을 입력하세요\n\n# 대제목\n## 소제목\n- 목록 항목\n**굵게** ==형광펜==\n---'}
+              style={{ ...inputS, fontSize: '13.5px', resize: 'vertical', lineHeight: 1.65 }} />
+          </>
         ) : (
           <div style={{ minHeight: '200px', padding: '14px 16px', border: '1px solid var(--border)', borderRadius: '8px', background: '#FAFAF9', lineHeight: 1.65 }}>
             {renderContent(content || '(내용 없음)')}
@@ -137,11 +208,147 @@ function NoticeEditModal({ notice, onSave, onClose }: {
   )
 }
 
+// ── 댓글 컴포넌트 ───────────────────────────────────────────────────
+const ROLE_COLOR: Record<string, string> = { CO1: '#1D4490', Member: '#6B7280', Intern: '#FF6B2B' }
+const ROLE_LABEL: Record<string, string> = { CO1: '운영', Member: '직원', Intern: '인턴' }
+
+function NoticeComments({ noticeId, isCO1 }: { noticeId: number; isCO1: boolean }) {
+  const [comments, setComments] = useState<NoticeComment[]>([])
+  const [input,    setInput]    = useState('')
+  const [loading,  setLoading]  = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function loadComments() {
+    try {
+      const res = await fetch(`/api/notice-comments?noticeId=${noticeId}`)
+      if (res.ok) setComments((await res.json()).comments ?? [])
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { loadComments() }, [noticeId])
+
+  async function submit() {
+    const text = input.trim()
+    if (!text) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/notice-comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noticeId, content: text }),
+      })
+      if (!res.ok) throw new Error()
+      setInput('')
+      await loadComments()
+      showToast('💬 댓글이 등록됐습니다')
+    } catch {
+      showToast('⚠️ 댓글 등록 실패. 다시 시도해주세요.')
+    } finally { setSubmitting(false) }
+  }
+
+  async function handleDelete(rowIndex: number) {
+    await fetch('/api/notice-comments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex }),
+    })
+    setComments(prev => prev.filter(c => c.rowIndex !== rowIndex))
+    showToast('🗑️ 댓글 삭제됐습니다')
+  }
+
+  return (
+    <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed var(--border)' }}>
+      {/* 댓글 헤더 */}
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '12px' }}>
+        💬 댓글{comments.length > 0 ? ` (${comments.length})` : ''}
+      </div>
+
+      {/* 댓글 목록 */}
+      {loading ? (
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>불러오는 중...</div>
+      ) : comments.length === 0 ? (
+        <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '12px' }}>첫 댓글을 남겨보세요!</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+          {comments.map(c => (
+            <div key={c.rowIndex} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              {/* 아바타 */}
+              <div style={{
+                flexShrink: 0, width: '30px', height: '30px', borderRadius: '50%',
+                background: `${ROLE_COLOR[c.role] ?? '#6B7280'}18`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px',
+              }}>
+                {c.role === 'CO1' ? '🎖️' : c.role === 'Member' ? '👤' : '🧑‍💻'}
+              </div>
+              {/* 내용 */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.author}</span>
+                  <span style={{
+                    fontSize: '10px', padding: '1px 7px', borderRadius: '10px',
+                    background: `${ROLE_COLOR[c.role] ?? '#6B7280'}15`,
+                    color: ROLE_COLOR[c.role] ?? '#6B7280', fontWeight: 600,
+                  }}>
+                    {ROLE_LABEL[c.role] ?? c.role}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{c.created_at}</span>
+                  {isCO1 && (
+                    <button onClick={() => handleDelete(c.rowIndex)}
+                      style={{ marginLeft: 'auto', fontSize: '10px', padding: '1px 7px', borderRadius: '5px', border: '1px solid var(--border)', background: '#fff', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      삭제
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
+                  {c.content}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 댓글 입력 */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+          placeholder="댓글 입력 (Enter로 전송, Shift+Enter 줄바꿈)"
+          rows={2}
+          style={{
+            flex: 1, padding: '8px 12px', border: '1px solid var(--border)',
+            borderRadius: '8px', fontFamily: 'inherit', fontSize: '13px',
+            resize: 'none', lineHeight: 1.55, outline: 'none',
+            transition: 'border-color 0.15s',
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary)' }}
+          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+        />
+        <button
+          onClick={submit}
+          disabled={submitting || !input.trim()}
+          style={{
+            padding: '8px 16px', borderRadius: '8px', border: 'none',
+            background: submitting || !input.trim() ? 'var(--bg-hover)' : 'var(--primary)',
+            color: submitting || !input.trim() ? 'var(--text-muted)' : '#fff',
+            fontSize: '12.5px', fontWeight: 700,
+            cursor: submitting || !input.trim() ? 'default' : 'pointer',
+            fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+            transition: 'background 0.15s',
+          }}>
+          {submitting ? '...' : '전송'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ────────────────────────────────────────────────────────
 export default function NoticePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { isCO1Real, previewMode } = usePreview()
+  const { isCO1Real } = usePreview()
 
   const role    = (session?.user as any)?.role as string | undefined
   const canEdit = role === 'CO1'
@@ -238,7 +445,7 @@ export default function NoticePage() {
                   boxShadow: isOpen ? '0 2px 12px rgba(255,107,43,0.08)' : 'var(--shadow)',
                   transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}>
-                  {/* 제목 행 (클릭 = 토글) */}
+                  {/* 제목 행 */}
                   <div
                     onClick={() => toggleOpen(notice.rowIndex)}
                     style={{
@@ -272,12 +479,13 @@ export default function NoticePage() {
                     )}
                   </div>
 
-                  {/* 내용 (열렸을 때) */}
+                  {/* 내용 + 댓글 */}
                   {isOpen && (
                     <div style={{ padding: '0 24px 20px', borderTop: '1px solid var(--border)' }}>
                       <div style={{ paddingTop: '16px' }}>
                         {renderContent(notice.content || '(내용 없음)')}
                       </div>
+                      <NoticeComments noticeId={notice.rowIndex} isCO1={!!canEdit} />
                     </div>
                   )}
                 </div>

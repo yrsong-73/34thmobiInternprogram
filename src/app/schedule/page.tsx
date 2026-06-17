@@ -71,7 +71,7 @@ function emptyRow(weekNum: number, dayNum: number, dayLabel: string, dateLabel: 
     time: '', name: '', type: 'offline', teacher: '',
     duration: '', link_labels: [], link_urls: [],
     lunch_with: '', note: '', job_types: ['all'], location: '',
-    flow_stage: '',
+    flow_stage: '', week_variant: '',
   }
 }
 
@@ -165,6 +165,7 @@ function EditModal({
       job_types:      jobTypes.length > 0 ? jobTypes : ['all'],
       count_for_rate: row.count_for_rate ?? false,
       flow_stage:     row.flow_stage ?? '',
+      week_variant:   row.week_variant ?? '',
     })
     setSaving(false)
   }
@@ -322,10 +323,11 @@ function EditModal({
 }
 
 // ─── FlowChart (교육 흐름 차트) ──────────────────────────────────────────────
-const FLOW_STAGES = ['회사의 이해', '직무 기초', '직무 심화', '시험 및 과제']
+const FLOW_STAGES = ['회사의 이해', '일잘러 입문', '직무 기초', '직무 심화', '시험 및 과제']
 
 const STAGE_META: Record<string, { icon: string; color: string; light: string }> = {
   '회사의 이해':  { icon: '🏢', color: '#1D4490', light: '#EEF2FF' },
+  '일잘러 입문':  { icon: '💡', color: '#D97706', light: '#FFFBEB' },
   '직무 기초':    { icon: '📖', color: '#0891B2', light: '#ECFEFF' },
   '직무 심화':    { icon: '⚙️',  color: '#7C3AED', light: '#F5F3FF' },
   '시험 및 과제': { icon: '🎯', color: '#DC2626', light: '#FFF1F2' },
@@ -548,6 +550,7 @@ export default function SchedulePage() {
   const [internJob, setInternJob]         = useState<string>('')
   const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true })
   const [week2Visible, setWeek2Visible]   = useState(true)
+  const [week2Variant, setWeek2Variant]   = useState<'A' | 'B'>('A')
   const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
@@ -648,6 +651,7 @@ export default function SchedulePage() {
   const dayGroups: DayGroup[] = (() => {
     const filtered = allRows.filter(r => {
       if (r.week_num !== currentWeek) return false
+      if (r.week_num === 2 && r.week_variant && r.week_variant !== week2Variant) return false
       return r.job_types.includes('all') || r.job_types.includes(currentJob)
     })
     const map = new Map<number, DayGroup>()
@@ -940,6 +944,23 @@ export default function SchedulePage() {
               </button>
             )
           })}
+          {currentWeek === 2 && (
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>버전</span>
+              {(['A', 'B'] as const).map(v => (
+                <button key={v} onClick={() => setWeek2Variant(v)}
+                  style={{
+                    padding: '6px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                    border: week2Variant === v ? 'none' : '1.5px solid var(--border)',
+                    background: week2Variant === v ? 'var(--mobi-orange)' : '#fff',
+                    color: week2Variant === v ? '#fff' : 'var(--text-secondary)',
+                  }}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => window.print()}
             style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: '#fff', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>

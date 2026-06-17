@@ -67,7 +67,7 @@ export type LectureType = 'online' | 'offline' | 'self' | 'exam' | 'task' | 'lun
  * I: type       J: teacher    K: duration    L: link_labels (콤마 구분)
  * M: link_urls  (콤마 구분)   N: lunch_with  O: note
  * P: job_types  (all | marketing | aiax | biz, 콤마 구분)
- * Q: count_for_rate (y/빈칸)  R: location
+ * Q: count_for_rate (y/빈칸)  R: location    S: week_variant
  */
 export interface ScheduleRow {
   rowIndex: number
@@ -88,7 +88,8 @@ export interface ScheduleRow {
   job_types: string[]        // ['all'] or ['marketing','aiax'] 등
   count_for_rate?: boolean   // 수강체크율 분모에 포함 여부 (Q열)
   location?: string          // 강의 장소 (R열)
-  flow_stage?: string        // 교육 흐름 단계 — F열 직접 입력 ('회사의 이해'|'직무 기초'|'직무 심화'|'시험 및 과제')
+  flow_stage?: string        // F열 교육 흐름 — '회사의 이해'|'일잘러 입문'|'직무 기초'|'직무 심화'|'시험 및 과제'
+  week_variant?: string      // S열 — 'A'|'B'|'' (빈칸=모두 표시, Week 2 A/B 버전 구분)
 }
 
 /** 하루 단위 묶음 (UI 렌더링용) */

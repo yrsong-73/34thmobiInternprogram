@@ -217,40 +217,6 @@ export async function upsertVideoLink(
 }
 
 // ──────────────────────────────────────────────
-// 강의 자료 링크 (schedule_links 시트)
-// 컬럼: lecture_name | link_url | link_label | updated_at
-// ──────────────────────────────────────────────
-
-export async function getScheduleLinks(): Promise<
-  { lectureName: string; linkUrl: string; linkLabel: string }[]
-> {
-  const rows = await readSheet('schedule_links!A2:D')
-  return rows
-    .filter(r => r[0])
-    .map(r => ({
-      lectureName: r[0] || '',
-      linkUrl:     r[1] || '',
-      linkLabel:   r[2] || '',
-    }))
-}
-
-export async function upsertScheduleLink(
-  lectureName: string,
-  linkUrl: string,
-  linkLabel: string
-): Promise<void> {
-  const rows = await readSheet('schedule_links!A2:D')
-  const idx = rows.findIndex(r => r[0] === lectureName && r[2] === linkLabel)
-  const now = new Date().toISOString()
-
-  if (idx >= 0) {
-    await updateRow('schedule_links', idx + 2, [lectureName, linkUrl, linkLabel, now])
-  } else {
-    await appendRow('schedule_links', [lectureName, linkUrl, linkLabel, now])
-  }
-}
-
-// ──────────────────────────────────────────────
 // 사용자 권한 (user_permissions 시트)
 // 컬럼: email | name | role | created_at
 // ──────────────────────────────────────────────
@@ -442,7 +408,7 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rawRows = await readSheet('schedule!A2:R')
+  const rawRows = await readSheet('schedule!A2:S')
   const result: ScheduleRow[] = []
   rawRows.forEach((r, i) => {
     if (!r[0] || !r[7]) return // week_num, name 필수
@@ -466,6 +432,7 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       job_types:      parseComma(r[15]) || ['all'],
       count_for_rate: r[16]?.toLowerCase() === 'y',
       location:       r[17] || '',
+      week_variant:   r[18] || '',
     })
   })
   return result
@@ -491,6 +458,7 @@ function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number
     d.job_types.join(','),
     d.count_for_rate ? 'y' : '',
     d.location || '',
+    d.week_variant || '',
   ]
 }
 

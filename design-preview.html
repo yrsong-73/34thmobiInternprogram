@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>직무 On/Off 구현 예시</title>
+<style>
+  :root {
+    --primary: #1D4490;
+    --mobi-dark: #191F28;
+    --mobi-orange: #FF6B2B;
+    --bg-main: #F8FAFC;
+    --bg-card: #FFFFFF;
+    --bg-hover: #F1F5F9;
+    --text-primary: #191F28;
+    --text-secondary: #4E5968;
+    --text-muted: #8B95A1;
+    --border: #E2E8F0;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', -apple-system, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo { font-size: 15px; font-weight: 800; color: var(--primary); margin-right: 8px; }
+  .nav-badge { font-size: 10px; font-weight: 700; color: var(--primary); background: #EEF2FF; border-radius: 20px; padding: 2px 8px; margin-right: 20px; }
+  .nav-tab { padding: 0 14px; height: 56px; display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--text-secondary); border-bottom: 2px solid transparent; cursor: pointer; text-decoration: none; }
+  .nav-tab.active { color: var(--primary); font-weight: 700; border-bottom-color: var(--primary); }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .role-chip { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(255,107,43,0.1); border: 1px solid rgba(255,107,43,0.3); color: #C04D15; }
+
+  /* ── 페이지 ── */
+  .page { max-width: 1400px; margin: 0 auto; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .desc { color: var(--text-secondary); font-size: 13.5px; margin-bottom: 24px; }
+
+  /* ── 다크 바 ── */
+  .dark-bar {
+    background: var(--mobi-dark);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .folder-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,107,43,0.15); border: 1px solid rgba(255,107,43,0.3);
+    border-radius: 8px; padding: 9px 16px; color: #FF9469;
+    font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+  }
+  .folder-btn-sub {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35);
+    border-radius: 8px; padding: 9px 16px; color: #FCD34D;
+    font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+  }
+
+  /* ── 섹션 레이블 ── */
+  .section-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 4px;
+  }
+  .manage-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+  }
+
+  /* ── 토글 스위치 ── */
+  .toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .toggle-item:hover { background: rgba(255,255,255,0.1); }
+  .toggle-item.off {
+    opacity: 0.45;
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.06);
+  }
+  .toggle-item .job-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  /* ── 토글 스위치 UI ── */
+  .switch {
+    width: 32px;
+    height: 17px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.15);
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .switch.on { background: #22C55E; }
+  .switch::after {
+    content: '';
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .switch.on::after { transform: translateX(15px); }
+
+  /* ── 직무 탭 ── */
+  .job-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .job-tab {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1.5px solid #CBD5E1;
+    background: #fff;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .job-tab.active {
+    border-color: var(--mobi-orange);
+    background: var(--mobi-orange);
+    color: #fff;
+  }
+  .job-tab.hidden-tab {
+    opacity: 0.4;
+    border-style: dashed;
+    cursor: not-allowed;
+    text-decoration: line-through;
+    position: relative;
+  }
+  .hidden-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #9CA3AF;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 4px 10px;
+    align-self: center;
+  }
+
+  /* ── 카드 예시 ── */
+  .schedule-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .schedule-header {
+    background: var(--mobi-dark);
+    display: grid;
+    grid-template-columns: 70px repeat(5, 1fr);
+    border-bottom: 2px solid var(--border);
+  }
+  .schedule-header > div {
+    padding: 12px 8px;
+    text-align: center;
+    border-left: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .schedule-body {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* ── 설명 박스 ── */
+  .info-box {
+    background: #EEF2FF;
+    border: 1px solid #DBEAFE;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #1D4490;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .info-box strong { font-weight: 700; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <span class="nav-logo">Mobidays</span>
+  <span class="nav-badge">34기 인턴십</span>
+  <a class="nav-tab active">📅 시간표</a>
+  <a class="nav-tab">🔔 공지</a>
+  <a class="nav-tab">📊 인턴 대시보드</a>
+  <div class="nav-right">
+    <span style="font-size:13px;font-weight:600;color:var(--text-primary)">송유림</span>
+    <span class="role-chip">CO1</span>
+    <button style="background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:12px;padding:5px 12px;cursor:pointer;">로그아웃</button>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <h1>📅 교육 시간표</h1>
+  <p class="desc">34기 인턴십 | 직무별 시간표 선택 후 자료 링크를 활용하세요</p>
+
+  <div class="info-box">
+    💡 <strong>구현 방식 설명</strong><br>
+    직무 On/Off 토글을 다크 바 안에 배치합니다. CO1만 보이며, Off된 직무는 탭에서 숨겨집니다.<br>
+    데이터는 삭제하지 않고 <strong>AppSettings에 visibility 플래그</strong>만 저장 → 다음 기수에 On으로 되돌리면 그대로 복원됩니다.
+  </div>
+
+  <!-- ① 전체 ON 상태 -->
+  <p class="section-title">① 모든 직무 ON 상태 (기본)</p>
+  <div class="dark-bar">
+    <a class="folder-btn">🗂 34기 인턴십 마스터 폴더</a>
+    <a class="folder-btn-sub">📂 과제 제출 폴더</a>
+
+    <div class="section-divider"></div>
+    <span class="manage-label">⚙️ 직무 시간표 관리</span>
+
+    <div class="toggle-group">
+      <div class="toggle-item" onclick="toggleJob(this)">
+        <div class="switch on"></div>
+        <span class="job-name">📊 마케팅</span>
+      </div>
+      <div class="toggle-item" onclick="toggleJob(this)">
+        <div class="switch on"></div>
+        <span class="job-name">🤖 AI·AX</span>
+      </div>
+      <div class="toggle-item" onclick="toggleJob(this)">
+        <div class="switch on"></div>
+        <span class="job-name">💼 사업기획·전략</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="job-tabs" id="tabs-all-on">
+    <button class="job-tab active">📊 마케팅</button>
+    <button class="job-tab">🤖 AI·AX</button>
+    <button class="job-tab">💼 사업기획·전략</button>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ② 사업기획 OFF 상태 -->
+  <p class="section-title">② '사업기획·전략' OFF 상태 → 탭에서 숨김</p>
+  <div class="dark-bar">
+    <a class="folder-btn">🗂 34기 인턴십 마스터 폴더</a>
+    <a class="folder-btn-sub">📂 과제 제출 폴더</a>
+
+    <div class="section-divider"></div>
+    <span class="manage-label">⚙️ 직무 시간표 관리</span>
+
+    <div class="toggle-group">
+      <div class="toggle-item">
+        <div class="switch on"></div>
+        <span class="job-name">📊 마케팅</span>
+      </div>
+      <div class="toggle-item">
+        <div class="switch on"></div>
+        <span class="job-name">🤖 AI·AX</span>
+      </div>
+      <div class="toggle-item off">
+        <div class="switch"></div>
+        <span class="job-name">💼 사업기획·전략</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭: 사업기획 숨겨진 상태 -->
+  <div class="job-tabs">
+    <button class="job-tab active">📊 마케팅</button>
+    <button class="job-tab">🤖 AI·AX</button>
+    <!-- 사업기획 탭 없음 -->
+  </div>
+
+  <div class="schedule-card">
+    <div class="schedule-header">
+      <div>시간</div>
+      <div>6/22 (월)</div>
+      <div>6/23 (화)</div>
+      <div>6/24 (수)</div>
+      <div>6/25 (목)</div>
+      <div>6/26 (금)</div>
+    </div>
+    <div class="schedule-body">
+      마케팅 시간표 표시 중 — 사업기획·전략 데이터는 보존된 채 탭만 숨겨짐
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ③ CO1 전용: 비활성 탭 확인 옵션 (선택 사항) -->
+  <p class="section-title">③ 옵션: OFF된 직무도 CO1은 볼 수 있게 하려면?</p>
+  <div class="job-tabs">
+    <button class="job-tab active">📊 마케팅</button>
+    <button class="job-tab">🤖 AI·AX</button>
+    <!-- CO1에게만 취소선+흐림으로 표시 -->
+    <button class="job-tab hidden-tab">💼 사업기획·전략</button>
+    <span class="hidden-badge">🔒 비공개 직무</span>
+  </div>
+  <p style="font-size:12px;color:var(--text-muted);margin-top:-8px;margin-bottom:20px">
+    → CO1만 흐린 탭으로 계속 접근 가능하게 하는 방식. 선택 사항.
+  </p>
+
+  <hr class="divider">
+
+  <!-- 구현 범위 -->
+  <p class="section-title">구현 범위 요약</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-primary)">📦 데이터 변경</div>
+      <ul style="font-size:13px;color:var(--text-secondary);line-height:2;padding-left:16px;">
+        <li>AppSettings에 <code style="background:#F1F5F9;padding:1px 5px;border-radius:4px;">job_visible_marketing</code> 등 3개 컬럼 추가</li>
+        <li>기본값: true (ON)</li>
+        <li><strong>기존 시간표 데이터 무변경</strong></li>
+      </ul>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-primary)">🖥️ UI 변경</div>
+      <ul style="font-size:13px;color:var(--text-secondary);line-height:2;padding-left:16px;">
+        <li>다크 바에 CO1 전용 토글 추가</li>
+        <li>OFF된 직무 탭 필터링</li>
+        <li>/api/settings PUT 확장 (저장)</li>
+        <li>CO1 미리보기 탭 옵션 선택 가능</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleJob(el) {
+  el.classList.toggle('off')
+  const sw = el.querySelector('.switch')
+  sw.classList.toggle('on')
+}
+</script>
+</body>
+</html>

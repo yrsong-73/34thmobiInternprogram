@@ -156,6 +156,7 @@ export interface AppSettings {
   job_visible_marketing: boolean
   job_visible_aiax: boolean
   job_visible_biz: boolean
+  week_2_visible: boolean
 }
 
 // ──────────────────────────────────────────────

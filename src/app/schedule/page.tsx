@@ -322,7 +322,14 @@ function EditModal({
 }
 
 // ─── FlowChart (교육 흐름 차트) ──────────────────────────────────────────────
-const FLOW_STAGES = ['회사의 이해', '직무 기초', '직무 심화', '과제 수행']
+const FLOW_STAGES = ['회사의 이해', '직무 기초', '직무 심화', '시험 및 과제']
+
+const STAGE_META: Record<string, { icon: string; color: string; light: string }> = {
+  '회사의 이해':  { icon: '🏢', color: '#1D4490', light: '#EEF2FF' },
+  '직무 기초':    { icon: '📖', color: '#0891B2', light: '#ECFEFF' },
+  '직무 심화':    { icon: '⚙️',  color: '#7C3AED', light: '#F5F3FF' },
+  '시험 및 과제': { icon: '🎯', color: '#DC2626', light: '#FFF1F2' },
+}
 
 function FlowChart({
   allRows,
@@ -335,118 +342,125 @@ function FlowChart({
   currentJob: string
   onHover: (rowIndex: number | null) => void
 }) {
+  if (allRows.length === 0) return null
+
   const relevantRows = allRows.filter(r =>
     r.flow_stage &&
     (r.job_types.includes('all') || r.job_types.includes(currentJob))
   )
+  const hasAnyData = relevantRows.length > 0
 
   const stageGroups = FLOW_STAGES.map(stage => {
+    const meta     = STAGE_META[stage] ?? { icon: '📌', color: '#6B7280', light: '#F9FAFB' }
     const lectures = relevantRows.filter(r => r.flow_stage === stage)
     const completedCount = lectures.filter(r => effectiveCompleted.has(r.rowIndex)).length
-    const allDone = lectures.length > 0 && completedCount === lectures.length
-    return { stage, lectures, completedCount, allDone }
-  }).filter(g => g.lectures.length > 0)
-
-  if (stageGroups.length === 0) return null
+    const allDone  = lectures.length > 0 && completedCount === lectures.length
+    const pct      = lectures.length > 0 ? Math.round(completedCount / lectures.length * 100) : 0
+    return { stage, meta, lectures, completedCount, allDone, pct }
+  })
 
   return (
     <div style={{
-      background: 'var(--bg-card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      boxShadow: 'var(--shadow)',
-      padding: '18px 22px',
-      marginBottom: '18px',
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)',
+      padding: '18px 22px', marginBottom: '18px',
     }}>
-      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '14px', letterSpacing: '0.3px' }}>
-        🗺️ 교육 흐름
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '14px' }}>
+        🗺️ 교육 흐름도
+        {!hasAnyData && (
+          <span style={{ fontWeight: 400, marginLeft: '8px', fontSize: '11px' }}>
+            — 시트 B열에 단계 마커 행 추가 후 강의가 표시됩니다
+          </span>
+        )}
       </div>
-      <div style={{ display: 'flex', gap: '0', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '6px' }}>
-        {stageGroups.map((group, idx) => {
-          const pct = group.lectures.length > 0 ? Math.round(group.completedCount / group.lectures.length * 100) : 0
-          return (
-            <div key={group.stage} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
-              <div style={{
-                width: '176px',
-                background: group.allDone ? 'linear-gradient(135deg, #F0FDF4, #DCFCE7)' : 'var(--bg-main)',
-                border: `1.5px solid ${group.allDone ? '#22C55E' : 'var(--border-strong)'}`,
-                borderRadius: '12px',
-                padding: '14px 13px 12px',
-                position: 'relative',
-                marginTop: '16px',
-                transition: 'border-color 0.3s',
-              }}>
-                {group.allDone && (
-                  <div style={{
-                    position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #22C55E, #16A34A)',
-                    color: '#fff', fontSize: '10px', fontWeight: 800,
-                    padding: '2px 10px', borderRadius: '999px',
-                    whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(34,197,94,0.4)',
-                    animation: 'mission-complete 0.6s ease',
-                  }}>
-                    🎉 미션 컴플릿!
-                  </div>
-                )}
-                <div style={{ marginBottom: '5px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: group.allDone ? '#15803D' : 'var(--text-primary)' }}>
-                    {group.stage}
-                  </div>
-                  <div style={{ fontSize: '10px', color: group.allDone ? '#22C55E' : 'var(--text-muted)', fontWeight: 600, marginTop: '1px' }}>
-                    {group.completedCount}/{group.lectures.length} 완료
-                  </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '6px' }}>
+        {stageGroups.map((group, idx) => (
+          <div key={group.stage} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
+            {/* 스테이지 카드 */}
+            <div style={{
+              width: '180px', position: 'relative', marginTop: '16px',
+              border: `2px solid ${group.allDone ? '#22C55E' : group.lectures.length > 0 ? group.meta.color + '50' : 'var(--border)'}`,
+              borderRadius: '12px', overflow: 'hidden',
+              background: group.allDone ? '#F0FDF4' : '#fff',
+              transition: 'border-color 0.3s',
+            }}>
+              {/* COMPLETE 뱃지 */}
+              {group.allDone && (
+                <div style={{
+                  position: 'absolute', top: '-12px', left: '50%',
+                  background: 'linear-gradient(135deg, #16A34A, #22C55E)',
+                  color: '#fff', fontSize: '10px', fontWeight: 800,
+                  padding: '2px 12px', borderRadius: '999px',
+                  whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(34,197,94,0.45)',
+                  animation: 'quest-complete 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  letterSpacing: '0.5px', zIndex: 2,
+                }}>
+                  ✨ COMPLETE
                 </div>
-                <div style={{ height: '4px', background: 'var(--border)', borderRadius: '999px', marginBottom: '10px', overflow: 'hidden' }}>
+              )}
+              {/* 스테이지 헤더 */}
+              <div style={{
+                padding: '10px 12px 8px',
+                background: group.lectures.length > 0 ? group.meta.color : '#F1F5F9',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
+                  <span style={{ fontSize: '13px' }}>{group.meta.icon}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: group.lectures.length > 0 ? '#fff' : 'var(--text-muted)' }}>
+                    {group.stage}
+                  </span>
+                </div>
+                <div style={{ height: '3px', background: 'rgba(255,255,255,0.25)', borderRadius: '999px', overflow: 'hidden' }}>
                   <div style={{
-                    height: '100%', borderRadius: '999px',
-                    width: `${pct}%`,
-                    background: group.allDone ? '#22C55E' : 'var(--primary)',
-                    transition: 'width 0.4s ease',
+                    height: '100%', borderRadius: '999px', transition: 'width 0.4s ease',
+                    width: `${group.pct}%`,
+                    background: group.allDone ? '#4ADE80' : 'rgba(255,255,255,0.9)',
                   }} />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {group.lectures.map(lec => {
-                    const done = effectiveCompleted.has(lec.rowIndex)
-                    return (
-                      <div
-                        key={lec.rowIndex}
-                        onMouseEnter={() => onHover(lec.rowIndex)}
-                        onMouseLeave={() => onHover(null)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '5px',
-                          padding: '4px 7px', borderRadius: '7px', cursor: 'pointer',
-                          background: done ? 'rgba(34,197,94,0.08)' : '#fff',
-                          border: `1px solid ${done ? 'rgba(34,197,94,0.3)' : 'var(--border)'}`,
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <span style={{ fontSize: '11px', flexShrink: 0, lineHeight: 1 }}>
-                          {done ? '✅' : '○'}
-                        </span>
-                        <span style={{
-                          fontSize: '11px', fontWeight: 600,
-                          color: done ? '#15803D' : 'var(--text-primary)',
-                          textDecoration: done ? 'line-through' : 'none',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {lec.name}
-                        </span>
-                      </div>
-                    )
-                  })}
+                <div style={{ fontSize: '10px', marginTop: '3px', fontWeight: 600, color: group.lectures.length > 0 ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)' }}>
+                  {group.lectures.length === 0 ? '강의 미배정' : `${group.completedCount}/${group.lectures.length} 완료`}
                 </div>
               </div>
-              {idx < stageGroups.length - 1 && (
-                <div style={{
-                  padding: '0 5px',
-                  fontSize: '18px', color: 'var(--border-strong)',
-                  flexShrink: 0, alignSelf: 'flex-start',
-                  marginTop: '48px',
-                }}>→</div>
-              )}
+              {/* 강의 목록 */}
+              <div style={{ padding: '8px 9px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {group.lectures.length === 0 ? (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0', fontStyle: 'italic' }}>—</div>
+                ) : group.lectures.map(lec => {
+                  const done = effectiveCompleted.has(lec.rowIndex)
+                  return (
+                    <div
+                      key={lec.rowIndex}
+                      onMouseEnter={() => onHover(lec.rowIndex)}
+                      onMouseLeave={() => onHover(null)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                        padding: '4px 7px', borderRadius: '7px', cursor: 'pointer',
+                        background: done ? `${group.meta.color}12` : group.meta.light,
+                        border: `1px solid ${done ? group.meta.color + '35' : group.meta.color + '25'}`,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: '10px', flexShrink: 0 }}>{done ? '✅' : '○'}</span>
+                      <span style={{
+                        fontSize: '11px', fontWeight: done ? 500 : 600,
+                        color: done ? group.meta.color : 'var(--text-primary)',
+                        textDecoration: done ? 'line-through' : 'none',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {lec.name}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          )
-        })}
+            {/* 화살표 */}
+            {idx < stageGroups.length - 1 && (
+              <div style={{ padding: '0 5px', fontSize: '18px', color: 'var(--border-strong)', flexShrink: 0, alignSelf: 'flex-start', marginTop: '46px' }}>
+                →
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -541,6 +555,7 @@ export default function SchedulePage() {
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
   const [internJob, setInternJob]         = useState<string>('')
   const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true })
+  const [week2Visible, setWeek2Visible]   = useState(true)
   const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
@@ -593,6 +608,7 @@ export default function SchedulePage() {
         aiax:      settings?.job_visible_aiax      !== false,
         biz:       settings?.job_visible_biz       !== false,
       })
+      setWeek2Visible(settings?.week_2_visible !== false)
     } finally {
       setLoading(false)
     }
@@ -745,6 +761,22 @@ export default function SchedulePage() {
     }
   }
 
+  async function toggleWeek2Visible() {
+    const newVal = !week2Visible
+    setWeek2Visible(newVal)
+    if (!newVal && currentWeek === 2) setCurrentWeek(1)
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week_2_visible: String(newVal) }),
+      })
+    } catch {
+      setWeek2Visible(!newVal)
+      showToast('⚠️ 저장 실패. 다시 시도해주세요.')
+    }
+  }
+
   if (status === 'loading' || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>불러오는 중...</div>
@@ -827,6 +859,42 @@ export default function SchedulePage() {
           </div>
         )}
 
+        {/* CO1 전용: 2주차 On/Off */}
+        {effectiveIsCO1 && (
+          <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginRight: '2px' }}>
+              📅 2주차 공개
+            </span>
+            <button
+              onClick={toggleWeek2Visible}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '7px',
+                padding: '5px 12px', borderRadius: '20px', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: '12px', fontWeight: 600,
+                transition: 'all 0.2s',
+                border: week2Visible ? '1.5px solid #22C55E' : '1.5px dashed var(--border-strong)',
+                background: week2Visible ? 'rgba(34,197,94,0.08)' : 'var(--bg-hover)',
+                color: week2Visible ? '#15803D' : 'var(--text-muted)',
+              }}
+            >
+              <span style={{
+                display: 'inline-block', width: '28px', height: '15px',
+                borderRadius: '999px', background: week2Visible ? '#22C55E' : '#CBD5E1',
+                position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+              }}>
+                <span style={{
+                  position: 'absolute', width: '11px', height: '11px',
+                  borderRadius: '50%', background: '#fff',
+                  top: '2px', left: week2Visible ? '15px' : '2px',
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                }} />
+              </span>
+              Week 2 · 6/29~7/3
+            </button>
+          </div>
+        )}
+
         {/* 직무 탭 */}
         <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           {JOB_TABS.map(tab => {
@@ -860,12 +928,26 @@ export default function SchedulePage() {
         </div>
 
         <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {([1, 2] as const).map(w => (
-            <button key={w} onClick={() => setCurrentWeek(w)}
-              style={{ padding: '7px 20px', borderRadius: '8px', border: `1.5px solid ${currentWeek === w ? 'var(--mobi-navy)' : 'var(--border)'}`, background: currentWeek === w ? 'var(--mobi-navy)' : '#fff', color: currentWeek === w ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
-              {w === 1 ? 'Week 1 · 6/22~6/26 공통+직무별 교육' : 'Week 2 · 6/29~7/3 과제 수행 및 최종 발표'}
-            </button>
-          ))}
+          {([1, 2] as const).map(w => {
+            if (w === 2 && !week2Visible && !effectiveIsCO1) return null
+            const isHidden = w === 2 && !week2Visible
+            return (
+              <button key={w} onClick={() => setCurrentWeek(w)}
+                style={{
+                  padding: '7px 20px', borderRadius: '8px',
+                  border: `1.5px solid ${isHidden ? 'var(--border)' : currentWeek === w ? 'var(--mobi-navy)' : 'var(--border)'}`,
+                  borderStyle: isHidden ? 'dashed' : 'solid',
+                  background: currentWeek === w && !isHidden ? 'var(--mobi-navy)' : '#fff',
+                  color: isHidden ? 'var(--text-muted)' : currentWeek === w ? '#fff' : 'var(--text-secondary)',
+                  fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.2s', opacity: isHidden ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                {w === 1 ? 'Week 1 · 6/22~6/26 공통+직무별 교육' : 'Week 2 · 6/29~7/3 과제 수행 및 최종 발표'}
+                {isHidden && <span style={{ fontSize: '10px', background: 'rgba(0,0,0,0.08)', borderRadius: '8px', padding: '1px 5px' }}>숨김</span>}
+              </button>
+            )
+          })}
           <button
             onClick={() => window.print()}
             style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: '#fff', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>

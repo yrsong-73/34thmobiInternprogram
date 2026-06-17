@@ -310,6 +310,7 @@ export async function getSettings(): Promise<AppSettings> {
     job_visible_marketing:  map['job_visible_marketing']  !== 'false',
     job_visible_aiax:       map['job_visible_aiax']       !== 'false',
     job_visible_biz:        map['job_visible_biz']        !== 'false',
+    week_2_visible:         map['week_2_visible']         !== 'false',
   }
 }
 

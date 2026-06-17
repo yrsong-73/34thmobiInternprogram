@@ -1103,7 +1103,7 @@ export default function SchedulePage() {
               {/* 강의 셀 */}
               {dayGroups.flatMap((day, di) =>
                 day.lectures
-                  .filter(lec => lec.type !== 'lunch')
+                  .filter(lec => lec.type !== 'lunch' && !(lec.type === 'task' && !lec.time))
                   .map(lec => {
                     const rows = parseRows(lec.time)
                     if (!rows) return null
@@ -1277,7 +1277,7 @@ export default function SchedulePage() {
               {dayGroups.map(day => {
                 const evalRowIndex = 10000 + day.day_num
                 const isEvalDone = effectiveCompleted.has(evalRowIndex)
-                const taskLecs = day.lectures.filter(l => l.type === 'task' && l.link_urls.length > 0 && l.link_urls[0])
+                const taskLecs = day.lectures.filter(l => l.type === 'task')
                 return (
                   <div key={day.day_num} style={{
                     borderLeft: '1px solid var(--border)',
@@ -1306,9 +1306,25 @@ export default function SchedulePage() {
                         </span>
                       </label>
                     )}
-                    {/* 과제 제출 버튼들 */}
+                    {/* 과제폴더 링크 */}
+                    {submitUrl && taskLecs.length > 0 && (
+                      <a href={submitUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: '10px', color: '#059669', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        📁 과제폴더
+                      </a>
+                    )}
+                    {/* 과제 항목들 */}
                     {taskLecs.map(lec => {
+                      const hasUrl = lec.link_urls.length > 0 && !!lec.link_urls[0]
                       const submitted = lec.rowIndex !== undefined ? effectiveSubs[lec.rowIndex] : undefined
+                      if (!hasUrl) {
+                        // URL 없는 task → 마감 안내 텍스트만 표시
+                        return (
+                          <div key={lec.rowIndex} style={{ fontSize: '11px', fontWeight: 600, color: '#F59E0B' }}>
+                            📋 {lec.name}{lec.note ? ` · ${lec.note}` : ''}
+                          </div>
+                        )
+                      }
                       return (
                         <div key={lec.rowIndex} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                           {effectiveCanCheck && lec.rowIndex !== undefined && (

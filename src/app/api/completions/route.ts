@@ -10,6 +10,7 @@ import {
   addCompletion,
   removeCompletion,
   getUserPermissions,
+  getScheduleRows,
 } from '@/lib/sheets'
 
 /**
@@ -42,9 +43,11 @@ export async function GET(req: Request) {
   }
 
   if (role === 'CO1' && !emailParam) {
-    // 전체 완료 기록 반환
-    const all = await getAllCompletions()
-    return NextResponse.json({ all })
+    const [all, scheduleRows] = await Promise.all([getAllCompletions(), getScheduleRows()])
+    const taskRows = scheduleRows
+      .filter(r => r.type === 'task' && r.count_for_rate)
+      .map(r => ({ rowIndex: r.rowIndex, name: r.name, job_types: r.job_types, note: r.note || '' }))
+    return NextResponse.json({ all, taskRows })
   }
 
   const targetEmail = (role === 'CO1' && emailParam) ? emailParam : session.user.email

@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const [attendNotes, setAttendNotes]     = useState<Record<string, string>>({})
   const [attendRates, setAttendRates]     = useState<Record<string, number>>({})
   const [submissions, setSubmissions]     = useState<Record<string, { rowIndex: number; scheduleName: string; submissionUrl: string }[]>>({})
+  const [taskRows, setTaskRows]           = useState<{ rowIndex: number; name: string; job_types: string[]; note: string }[]>([])
 
   const tableRef = useRef<HTMLDivElement>(null)
   const rowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
@@ -111,13 +112,24 @@ export default function DashboardPage() {
     return {}
   }
 
+  async function fetchTaskRows(): Promise<{ rowIndex: number; name: string; job_types: string[]; note: string }[]> {
+    try {
+      const res = await fetch('/api/completions')
+      if (res.ok) { const data = await res.json(); return data.taskRows ?? [] }
+    } catch {}
+    return []
+  }
+
   async function loadAll() {
     setLoading(true)
-    const [internsData, recordsData, ratesData, subsData] = await Promise.all([fetchInterns(), fetchRecords(), fetchAttendRates(), fetchSubmissions()])
+    const [internsData, recordsData, ratesData, subsData, taskRowsData] = await Promise.all([
+      fetchInterns(), fetchRecords(), fetchAttendRates(), fetchSubmissions(), fetchTaskRows(),
+    ])
     setInterns(internsData)
     setRecords(recordsData)
     setAttendRates(ratesData)
     setSubmissions(subsData)
+    setTaskRows(taskRowsData)
     setLoading(false)
   }
 
@@ -265,26 +277,43 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                {/* 제출 링크 패널 (CO1 + 카드 선택 시) */}
-                {isCO1 && isSelected && (
-                  <div style={{ marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>📎 과제 제출 링크</div>
-                    {(submissions[intern.name] ?? []).length === 0 ? (
-                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontStyle: 'italic' }}>제출 없음</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {(submissions[intern.name] ?? []).map((s, i) => (
-                          <a key={i} href={s.submissionUrl} target="_blank" rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            style={{ fontSize: '11.5px', color: 'var(--mobi-orange)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
-                            title={s.scheduleName}>
-                            📄 {s.scheduleName}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* 과제 제출 현황 패널 (CO1 + 카드 선택 시) */}
+                {isCO1 && isSelected && (() => {
+                  const internTasks = taskRows.filter(t =>
+                    t.job_types.includes('all') || t.job_types.includes(intern.type)
+                  )
+                  const internSubs = submissions[intern.name] ?? []
+                  return (
+                    <div style={{ marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                      <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>📎 과제 제출 현황</div>
+                      {internTasks.length === 0 ? (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>과제 없음</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {internTasks.map(task => {
+                            const sub = internSubs.find(s => s.rowIndex === task.rowIndex)
+                            return (
+                              <div key={task.rowIndex} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ fontSize: '12px', flexShrink: 0 }}>{sub ? '✅' : '⬜'}</span>
+                                {sub ? (
+                                  <a href={sub.submissionUrl} target="_blank" rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ fontSize: '11px', color: '#059669', fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {task.name}
+                                  </a>
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                    {task.name}{task.note ? ` · ${task.note}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )
           })}

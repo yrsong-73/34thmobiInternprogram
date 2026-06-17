@@ -430,7 +430,7 @@ export async function deleteNoticeComment(rowIndex: number): Promise<void> {
 //
 // 컬럼:
 //  A: week_num  B: day_num   C: day_label  D: date_label
-//  E: eval_label F: sort_order G: time     H: name
+//  E: eval_label F: 교육 흐름  G: time     H: name
 //  I: type      J: teacher   K: duration   L: link_labels (콤마)
 //  M: link_urls (콤마)       N: lunch_with O: note
 //  P: job_types (콤마, "all" = 전체)
@@ -443,21 +443,17 @@ function parseComma(val: string | undefined): string[] {
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
   const rawRows = await readSheet('schedule!A2:R')
-  let currentStage = ''
   const result: ScheduleRow[] = []
   rawRows.forEach((r, i) => {
-    const bVal = r[1]
-    // B열이 텍스트 → currentStage 갱신 (마커 행이든 강의 행이든 동일하게 처리)
-    if (bVal && isNaN(Number(bVal))) currentStage = bVal
     if (!r[0] || !r[7]) return // week_num, name 필수
     result.push({
       rowIndex:   i + 2,
       week_num:   Number(r[0]) || 1,
-      day_num:    parseInt(r[2] || '1') || 1, // C열 day_label("1일차"→1)에서 파싱
+      day_num:    Number(r[1]) || 1,    // B열 숫자 (day_num)
       day_label:  r[2] || '',
       date_label: r[3] || '',
       eval_label: r[4] || '',
-      sort_order: Number(r[5]) || 0,
+      flow_stage: r[5] || '',           // F열 = 교육 흐름 단계명 직접 읽기
       time:       r[6] || '',
       name:       r[7] || '',
       type:       (r[8] as any) || 'offline',
@@ -470,7 +466,6 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       job_types:      parseComma(r[15]) || ['all'],
       count_for_rate: r[16]?.toLowerCase() === 'y',
       location:       r[17] || '',
-      flow_stage:     currentStage,
     })
   })
   return result
@@ -483,7 +478,7 @@ function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number
     d.day_label,
     d.date_label,
     d.eval_label,
-    d.sort_order,
+    d.flow_stage || '',   // F열 = 교육 흐름
     d.time,
     d.name,
     d.type,

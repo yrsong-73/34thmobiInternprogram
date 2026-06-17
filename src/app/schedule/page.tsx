@@ -63,14 +63,15 @@ function showToast(msg: string) {
   setTimeout(() => el.classList.remove('show'), 2200)
 }
 
-function emptyRow(weekNum: number, dayNum: number, dayLabel: string, dateLabel: string, evalLabel: string, sortOrder: number): Omit<ScheduleRow, 'rowIndex'> {
+function emptyRow(weekNum: number, dayNum: number, dayLabel: string, dateLabel: string, evalLabel: string): Omit<ScheduleRow, 'rowIndex'> {
   return {
     week_num: weekNum, day_num: dayNum,
     day_label: dayLabel, date_label: dateLabel,
-    eval_label: evalLabel, sort_order: sortOrder,
+    eval_label: evalLabel,
     time: '', name: '', type: 'offline', teacher: '',
     duration: '', link_labels: [], link_urls: [],
     lunch_with: '', note: '', job_types: ['all'], location: '',
+    flow_stage: '',
   }
 }
 
@@ -151,7 +152,6 @@ function EditModal({
       day_label:   row.day_label  ?? '',
       date_label:  row.date_label ?? '',
       eval_label:  row.eval_label ?? '',
-      sort_order:  row.sort_order ?? 99,
       time:        form.time,
       name:        form.name,
       type:        form.type as LectureType,
@@ -663,7 +663,7 @@ export default function SchedulePage() {
       }
       map.get(r.day_num)!.lectures.push(r)
     })
-    map.forEach(g => g.lectures.sort((a, b) => a.sort_order - b.sort_order))
+    map.forEach(g => g.lectures.sort((a, b) => a.time.localeCompare(b.time)))
     return Array.from(map.values()).sort((a, b) => a.day_num - b.day_num)
   })()
 
@@ -980,7 +980,7 @@ export default function SchedulePage() {
                   <div style={{ marginTop: '4px', display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     {effectiveIsCO1 && (
                       <button
-                        onClick={() => setEditRow({ isNew: true, ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label, day.lectures.length + 1) })}
+                        onClick={() => setEditRow({ isNew: true, ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label) })}
                         style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', color: 'rgba(255,255,255,0.8)', fontSize: '9px', fontWeight: 600, padding: '2px 7px', cursor: 'pointer', fontFamily: 'inherit' }}>
                         + 강의 추가
                       </button>
@@ -1060,7 +1060,7 @@ export default function SchedulePage() {
                       } else {
                         setEditRow({
                           isNew: true,
-                          ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label, 0),
+                          ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label),
                           type: 'lunch' as LectureType,
                           time: '12:00~13:30',
                           name: '웰컴런치',

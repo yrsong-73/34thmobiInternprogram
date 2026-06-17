@@ -366,12 +366,7 @@ function FlowChart({
       padding: '18px 22px', marginBottom: '18px',
     }}>
       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '14px' }}>
-        🗺️ 교육 흐름도
-        {!hasAnyData && (
-          <span style={{ fontWeight: 400, marginLeft: '8px', fontSize: '11px' }}>
-            — 시트 B열에 단계 마커 행 추가 후 강의가 표시됩니다
-          </span>
-        )}
+        🗺️ 교육 흐름
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '6px' }}>
         {stageGroups.map((group, idx) => (
@@ -382,26 +377,13 @@ function FlowChart({
               border: `2px solid ${group.allDone ? '#22C55E' : group.lectures.length > 0 ? group.meta.color + '50' : 'var(--border)'}`,
               borderRadius: '12px', overflow: 'hidden',
               background: group.allDone ? '#F0FDF4' : '#fff',
-              transition: 'border-color 0.3s',
+              transition: 'border-color 0.3s, background 0.3s',
             }}>
-              {/* COMPLETE 뱃지 */}
-              {group.allDone && (
-                <div style={{
-                  position: 'absolute', top: '-12px', left: '50%',
-                  background: 'linear-gradient(135deg, #16A34A, #22C55E)',
-                  color: '#fff', fontSize: '10px', fontWeight: 800,
-                  padding: '2px 12px', borderRadius: '999px',
-                  whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(34,197,94,0.45)',
-                  animation: 'quest-complete 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  letterSpacing: '0.5px', zIndex: 2,
-                }}>
-                  ✨ COMPLETE
-                </div>
-              )}
               {/* 스테이지 헤더 */}
               <div style={{
                 padding: '10px 12px 8px',
-                background: group.lectures.length > 0 ? group.meta.color : '#F1F5F9',
+                background: group.allDone ? '#16A34A' : group.lectures.length > 0 ? group.meta.color : '#F1F5F9',
+                transition: 'background 0.4s',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
                   <span style={{ fontSize: '13px' }}>{group.meta.icon}</span>
@@ -409,16 +391,26 @@ function FlowChart({
                     {group.stage}
                   </span>
                 </div>
-                <div style={{ height: '3px', background: 'rgba(255,255,255,0.25)', borderRadius: '999px', overflow: 'hidden' }}>
+                {/* 진행 바 */}
+                <div style={{ height: '4px', background: 'rgba(255,255,255,0.25)', borderRadius: '999px', overflow: 'hidden' }}>
                   <div style={{
-                    height: '100%', borderRadius: '999px', transition: 'width 0.4s ease',
+                    height: '100%', borderRadius: '999px', transition: 'width 0.5s ease',
                     width: `${group.pct}%`,
-                    background: group.allDone ? '#4ADE80' : 'rgba(255,255,255,0.9)',
+                    background: group.allDone ? '#BBF7D0' : 'rgba(255,255,255,0.9)',
                   }} />
                 </div>
-                <div style={{ fontSize: '10px', marginTop: '3px', fontWeight: 600, color: group.lectures.length > 0 ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)' }}>
-                  {group.lectures.length === 0 ? '강의 미배정' : `${group.completedCount}/${group.lectures.length} 완료`}
-                </div>
+                {/* 완료 상태 텍스트 */}
+                {group.lectures.length === 0 ? (
+                  <div style={{ fontSize: '10px', marginTop: '3px', fontWeight: 600, color: 'var(--text-muted)' }}>강의 미배정</div>
+                ) : group.allDone ? (
+                  <div key="done" style={{ fontSize: '11px', marginTop: '3px', fontWeight: 800, color: '#BBF7D0', animation: 'done-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    ✨ DONE!
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '10px', marginTop: '3px', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
+                    {group.completedCount}/{group.lectures.length} 완료
+                  </div>
+                )}
               </div>
               {/* 강의 목록 */}
               <div style={{ padding: '8px 9px', display: 'flex', flexDirection: 'column', gap: '4px' }}>

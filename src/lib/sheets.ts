@@ -447,16 +447,13 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
   const result: ScheduleRow[] = []
   rawRows.forEach((r, i) => {
     const bVal = r[1]
-    if (bVal && isNaN(Number(bVal))) {
-      // B열이 문자열 → flow stage 마커 행
-      currentStage = bVal
-      return
-    }
+    // B열이 텍스트 → currentStage 갱신 (마커 행이든 강의 행이든 동일하게 처리)
+    if (bVal && isNaN(Number(bVal))) currentStage = bVal
     if (!r[0] || !r[7]) return // week_num, name 필수
     result.push({
       rowIndex:   i + 2,
       week_num:   Number(r[0]) || 1,
-      day_num:    Number(r[1]) || 1,
+      day_num:    parseInt(r[2] || '1') || 1, // C열 day_label("1일차"→1)에서 파싱
       day_label:  r[2] || '',
       date_label: r[3] || '',
       eval_label: r[4] || '',

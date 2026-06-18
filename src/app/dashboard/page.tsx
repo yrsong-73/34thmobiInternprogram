@@ -351,7 +351,7 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
-                  {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','인턴 기록 요약','지각/결석'] as const).map((h, i) => {
+                  {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','인턴 기록 요약','태도평가','지각/결석'] as const).map((h, i) => {
                     const FREEZE_LEFT = [0, 110, 200, 310, 420] as const
                     const FREEZE_MW   = [110, 90, 110, 110, 260] as const
                     const frozen = i < 5
@@ -453,18 +453,6 @@ export default function DashboardPage() {
                         )}
                       </td>
 
-                      {/* 태도평가 */}
-                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
-                        {isEditing ? (
-                          <input type="number" min={0} max={5} value={editData.score_attitude ?? intern.score_attitude}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => setEditData(p => ({ ...p, score_attitude: Number(e.target.value) }))}
-                            style={{ ...cellInputStyle, width: '52px' }} />
-                        ) : (
-                          <span style={{ fontWeight: 600, color: scoreColor(intern.score_attitude, 5) }}>{intern.score_attitude} / 5</span>
-                        )}
-                      </td>
-
                       {/* TEST 상위 2과목 */}
                       <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
@@ -530,25 +518,21 @@ export default function DashboardPage() {
                             style={{ width: '100%', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                           />
                         ) : (
-                          <div>
-                            {/* CO1이 직접 작성한 summary */}
-                            {intern.summary && (
-                              <p style={{ fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: 1.6, margin: '0 0 6px 0' }}>{intern.summary}</p>
-                            )}
-                            {/* 기록표에서 작성된 기록들 (작성자 구분 없이 내용만) */}
-                            {internRecs.length > 0 && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {internRecs.map((r, i) => (
-                                  <div key={i} style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', borderLeft: '2px solid var(--border)', paddingLeft: '8px' }}>
-                                    {r.content}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {!intern.summary && internRecs.length === 0 && (
-                              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>
-                            )}
-                          </div>
+                          <span style={{ fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                            {intern.summary || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 태도평가 */}
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
+                        {isEditing ? (
+                          <input type="number" min={0} max={5} value={editData.score_attitude ?? intern.score_attitude}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setEditData(p => ({ ...p, score_attitude: Number(e.target.value) }))}
+                            style={{ ...cellInputStyle, width: '52px' }} />
+                        ) : (
+                          <span style={{ fontWeight: 600, color: scoreColor(intern.score_attitude, 5) }}>{intern.score_attitude} / 5</span>
                         )}
                       </td>
 

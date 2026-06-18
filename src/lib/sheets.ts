@@ -557,3 +557,62 @@ export async function removeCompletion(email: string, scheduleRowIndex: number):
   )
   if (idx >= 0) await clearRow('completions', idx + 2)
 }
+
+// ──────────────────────────────────────────────
+// 면담 일정 (interviews 시트)
+// 컬럼: A=intern_name  B=date  C=time_slot  D=booked_by
+// ──────────────────────────────────────────────
+
+export interface Interview {
+  rowIndex: number
+  intern_name: string
+  date: string        // '6/23 화'
+  time_slot: string   // '14:00~14:30'
+  booked_by: string   // 부서명 or ''
+}
+
+export async function getInterviews(): Promise<Interview[]> {
+  try {
+    const rows = await readSheet('interviews!A2:D')
+    return rows
+      .map((r, i) => ({
+        rowIndex:    i + 2,
+        intern_name: r[0] || '',
+        date:        r[1] || '',
+        time_slot:   r[2] || '',
+        booked_by:   r[3] || '',
+      }))
+      .filter(r => r.intern_name && r.date && r.time_slot)
+  } catch { return [] }
+}
+
+export async function addInterview(data: Omit<Interview, 'rowIndex'>): Promise<void> {
+  await appendRow('interviews', [data.intern_name, data.date, data.time_slot, data.booked_by])
+}
+
+export async function updateInterviewBooking(rowIndex: number, bookedBy: string): Promise<void> {
+  const rows = await readSheet(`interviews!A${rowIndex}:D${rowIndex}`)
+  const existing = rows[0] || []
+  await updateRow('interviews', rowIndex, [
+    existing[0] ?? '',
+    existing[1] ?? '',
+    existing[2] ?? '',
+    bookedBy,
+  ])
+}
+
+export async function deleteInterview(rowIndex: number): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'interviews')
+  if (!sheet || sheet.properties?.sheetId == null) {
+    await clearRow('interviews', rowIndex)
+    return
+  }
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }],
+    },
+  })
+}

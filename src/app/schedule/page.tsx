@@ -571,6 +571,7 @@ export default function SchedulePage() {
   const [week2Visible, setWeek2Visible]   = useState(true)
   const [week2Variant, setWeek2Variant]   = useState<'A' | 'B'>('A')
   const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
+  const [myInterviews, setMyInterviews] = useState<{ date: string; time_slot: string; booked_by: string }[]>([])
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
@@ -609,6 +610,34 @@ export default function SchedulePage() {
       .then(d => { if (d.type) { setInternJob(d.type); setCurrentJob(d.type) } })
       .catch(() => {})
   }, [isIntern, status])
+
+  // 인턴 본인 면담 일정 로드
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    // 실제 인턴 또는 인턴 미리보기 모드에서만
+    const name = isIntern ? null : (internPreviewActive ? previewInternName : null)
+    if (!isIntern && !name) { setMyInterviews([]); return }
+    const url = name ? `/api/interviews?internName=${encodeURIComponent(name)}` : '/api/interviews/me'
+    if (isIntern) {
+      // 인턴 본인: /api/interviews/me 대신 자신의 이름으로 조회하려면 me 엔드포인트 필요
+      // 일단 모든 면담 불러와 booked 슬롯만 표시
+      fetch('/api/interviews')
+        .then(r => r.json())
+        .then(d => {
+          const booked = (d.interviews || []).filter((iv: any) => iv.booked_by)
+          setMyInterviews(booked)
+        })
+        .catch(() => {})
+    } else if (name) {
+      fetch(`/api/interviews?internName=${encodeURIComponent(name)}`)
+        .then(r => r.json())
+        .then(d => {
+          const booked = (d.interviews || []).filter((iv: any) => iv.booked_by)
+          setMyInterviews(booked)
+        })
+        .catch(() => {})
+    }
+  }, [isIntern, status, internPreviewActive, previewInternName])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -1011,6 +1040,27 @@ export default function SchedulePage() {
             🖨️ 인쇄
           </button>
         </div>
+
+        {/* 면담 일정 메모 (인턴 시점) */}
+        {effectiveIsIntern && myInterviews.length > 0 && (
+          <div className="no-print" style={{
+            display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px',
+            padding: '10px 14px',
+            background: 'rgba(29,68,144,0.04)', border: '1px solid rgba(29,68,144,0.15)',
+            borderRadius: '10px',
+          }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#1D4490', marginRight: '2px', alignSelf: 'center' }}>📅 면담 일정</span>
+            {myInterviews.map((iv, i) => (
+              <span key={i} style={{
+                padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                background: 'rgba(29,68,144,0.1)', border: '1px solid rgba(29,68,144,0.2)',
+                color: '#1D4490',
+              }}>
+                {iv.date} {iv.time_slot} · {iv.booked_by}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="no-print">
           <FlowChart

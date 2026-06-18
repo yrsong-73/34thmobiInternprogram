@@ -56,9 +56,13 @@ export default function RecordPage() {
   const isCO1    = role === 'CO1'
 
   const [internsList, setInternsList]   = useState<{ name: string; job: string; type: string }[]>([])
+  const [internsData, setInternsData]   = useState<{ name: string; rowIndex: number; summary: string }[]>([])
   const [records, setRecords]           = useState<InternRecord[]>([])
   const [loading, setLoading]           = useState(true)
   const [saving, setSaving]             = useState(false)
+  const [internSummaries, setInternSummaries] = useState<Record<string, string>>({})
+  const [savingSum, setSavingSum]       = useState<Record<string, boolean>>({})
+  const [aiLoading, setAiLoading]       = useState<Record<string, boolean>>({})
   // 작성자 뷰 (기본: 본인)
   const [viewAuthor, setViewAuthor]     = useState('')
   // 새 기록 초안 { 인턴명: 내용 }
@@ -89,7 +93,12 @@ export default function RecordPage() {
     }
     if (internsRes.ok) {
       const data = await internsRes.json()
-      setInternsList((data.interns ?? []).map((i: any) => ({ name: i.name, job: i.job, type: i.type })))
+      const interns = data.interns ?? []
+      setInternsList(interns.map((i: any) => ({ name: i.name, job: i.job, type: i.type })))
+      setInternsData(interns.map((i: any) => ({ name: i.name, rowIndex: i.rowIndex, summary: i.summary ?? '' })))
+      const sumMap: Record<string, string> = {}
+      interns.forEach((i: any) => { sumMap[i.name] = i.summary ?? '' })
+      setInternSummaries(sumMap)
     }
     setLoading(false)
   }
@@ -133,6 +142,42 @@ export default function RecordPage() {
       showToast('❌ 저장 실패. 다시 시도해주세요.')
     }
     setSaving(false)
+  }
+
+  async function saveSummary(internName: string) {
+    const intern = internsData.find(i => i.name === internName)
+    if (!intern?.rowIndex) return
+    setSavingSum(p => ({ ...p, [internName]: true }))
+    await fetch('/api/interns', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex: intern.rowIndex, summary: internSummaries[internName] ?? '' }),
+    })
+    showToast('✅ 요약이 저장됐습니다')
+    setSavingSum(p => ({ ...p, [internName]: false }))
+  }
+
+  async function generateAiSummary(internName: string) {
+    const recs = records.filter(r => r.intern === internName)
+    if (recs.length === 0) { showToast('⚠️ 기록이 없어 요약할 내용이 없습니다'); return }
+    setAiLoading(p => ({ ...p, [internName]: true }))
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ internName, records: recs.map(r => ({ date: r.date, author: r.author, content: r.content })) }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setInternSummaries(p => ({ ...p, [internName]: data.summary ?? '' }))
+        showToast('✨ AI 요약이 완성됐습니다')
+      } else {
+        showToast('❌ AI 요약 실패. ANTHROPIC_API_KEY를 확인해주세요.')
+      }
+    } catch {
+      showToast('❌ AI 요약 중 오류가 발생했습니다')
+    }
+    setAiLoading(p => ({ ...p, [internName]: false }))
   }
 
   async function deleteRecord(r: InternRecord) {
@@ -389,6 +434,34 @@ export default function RecordPage() {
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)', background: '#F8F7F4', padding: '1px 8px', borderRadius: '20px' }}>
                         {recs.length}건
                       </span>
+                    </div>
+
+                    {/* 인턴 요약 입력 */}
+                    <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#92400E' }}>📝 인턴 요약</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => generateAiSummary(internName)}
+                            disabled={!!aiLoading[internName]}
+                            style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', border: '1px solid #C084FC', background: aiLoading[internName] ? '#F3E8FF' : '#FAF5FF', color: '#7C3AED', cursor: aiLoading[internName] ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                            {aiLoading[internName] ? '⏳ 요약 중...' : '✨ AI 요약'}
+                          </button>
+                          <button
+                            onClick={() => saveSummary(internName)}
+                            disabled={!!savingSum[internName]}
+                            style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', border: 'none', background: savingSum[internName] ? '#FDE68A' : '#F59E0B', color: '#fff', cursor: savingSum[internName] ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                            {savingSum[internName] ? '저장 중...' : '저장'}
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        value={internSummaries[internName] ?? ''}
+                        onChange={e => setInternSummaries(p => ({ ...p, [internName]: e.target.value }))}
+                        rows={3}
+                        placeholder="인턴에 대한 종합 요약을 입력하세요..."
+                        style={{ width: '100%', border: '1px solid #FDE68A', borderRadius: '6px', padding: '8px 10px', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff' }}
+                      />
                     </div>
 
                     {/* 기록 카드 */}

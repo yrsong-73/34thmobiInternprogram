@@ -71,16 +71,6 @@ export default function InterviewPage() {
 
   const canEdit = role === 'CO1' || role === 'Member'
 
-  // 슬롯 열기 (CO1만) — 해당 (intern, date, slot) 레코드 생성
-  async function openSlot(internName: string, date: string, timeSlot: string) {
-    await fetch('/api/interviews', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intern_name: internName, date, time_slot: timeSlot }),
-    })
-    await fetchData()
-  }
-
   // 면담 신청 폼 제출
   async function submitBook() {
     if (!fDept || !fIntern || !fDate || !fTime) return
@@ -102,12 +92,7 @@ export default function InterviewPage() {
         return
       }
     } else {
-      // 슬롯 없으면 Member는 불가 (CO1은 생성 후 예약)
-      if (role !== 'CO1') {
-        alert('해당 슬롯이 아직 열리지 않았습니다. CO1에게 문의하세요.')
-        setBooking(false)
-        return
-      }
+      // 슬롯 없으면 자동 생성 후 예약 (CO1+Member 모두)
       await fetch('/api/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,11 +103,17 @@ export default function InterviewPage() {
         iv.intern_name === fIntern && iv.date === fDate && iv.time_slot === fTime
       )
       if (newRec) {
-        await fetch('/api/interviews', {
+        const res = await fetch('/api/interviews', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rowIndex: newRec.rowIndex, booked_by: fDept }),
         })
+        if (!res.ok) {
+          const d = await res.json()
+          alert(d.error || '예약 실패')
+          setBooking(false)
+          return
+        }
       }
     }
     setFTime('')
@@ -143,11 +134,10 @@ export default function InterviewPage() {
   // fDate 변경 시 fTime 초기화
   useEffect(() => { setFTime('') }, [fDate, fIntern])
 
-  // 선택된 intern+date의 예약 가능 슬롯 (record 있고 booked_by 없는 것)
+  // 선택된 intern+date의 예약 가능 슬롯 (아직 예약 안 된 시간 전체)
   const availableTimes = DATE_SLOTS[fDate]?.filter(t => {
     const rec = interviews.find(iv => iv.intern_name === fIntern && iv.date === fDate && iv.time_slot === t)
-    if (!rec) return role === 'CO1'  // CO1은 미오픈 슬롯도 바로 신청 가능
-    return !rec.booked_by
+    return !rec || !rec.booked_by
   }) ?? []
 
   if (status === 'loading' || loading) {
@@ -186,22 +176,9 @@ export default function InterviewPage() {
                       {internNames.map(intern => {
                         const rec = interviews.find(iv => iv.intern_name === intern && iv.date === date && iv.time_slot === slot)
                         return (
-                          <td key={intern} style={{ ...td, textAlign: 'center' }}>
-                            {!rec ? (
-                              // 미오픈
-                              role === 'CO1' ? (
-                                <button onClick={() => openSlot(intern, date, slot)} style={{
-                                  padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                                  cursor: 'pointer', fontFamily: 'inherit',
-                                  background: 'rgba(99,102,241,0.08)', border: '1px dashed rgba(99,102,241,0.3)', color: '#6366F1',
-                                }}>+ 열기</button>
-                              ) : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>—</span>
-                            ) : !rec.booked_by ? (
-                              // 예약 가능
-                              <span style={{ color: '#15803D', fontSize: '12px', fontWeight: 600 }}>예약가능</span>
-                            ) : (
-                              // 예약됨
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', padding: '0 4px' }}>
+                          <td key={intern} style={{ ...td }}>
+                            {rec?.booked_by ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                                 <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: 'rgba(34,197,94,0.12)', color: '#15803D', border: '1px solid rgba(34,197,94,0.3)', whiteSpace: 'nowrap' }}>
                                   {rec.booked_by}
                                 </span>
@@ -209,6 +186,8 @@ export default function InterviewPage() {
                                   <button onClick={() => deleteSlot(rec.rowIndex)} style={miniBtn('delete')}>삭제</button>
                                 )}
                               </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>—</span>
                             )}
                           </td>
                         )

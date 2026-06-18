@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const role = (session.user as any)?.role as string
-  if (role !== 'CO1') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isCoOrMember(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { intern_name, date, time_slot } = await req.json()
   if (!intern_name || !date || !time_slot) {

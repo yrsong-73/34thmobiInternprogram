@@ -64,6 +64,9 @@ export default function DashboardPage() {
   const [submissions, setSubmissions]     = useState<Record<string, { rowIndex: number; scheduleName: string; submissionUrl: string }[]>>({})
   const [taskRows, setTaskRows]           = useState<{ rowIndex: number; name: string; job_types: string[]; note: string }[]>([])
 
+  const [showSchool, setShowSchool]   = useState(true)
+  const [showCareer, setShowCareer]   = useState(true)
+
   const tableRef = useRef<HTMLDivElement>(null)
   const rowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
 
@@ -338,8 +341,23 @@ export default function DashboardPage() {
 
         {/* ── 평가 통합표 ── */}
         <div ref={tableRef} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>📋 평가 통합표</h2>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, marginRight: 'auto' }}>📋 평가 통합표</h2>
+            {/* 열 토글 버튼 */}
+            {([
+              { label: '학교', active: showSchool, toggle: () => setShowSchool(p => !p) },
+              { label: '경력', active: showCareer, toggle: () => setShowCareer(p => !p) },
+            ]).map(({ label, active, toggle }) => (
+              <button key={label} onClick={toggle} style={{
+                padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                background: active ? 'rgba(29,68,144,0.1)' : '#f3f4f6',
+                color: active ? '#1D4490' : 'var(--text-muted)',
+                border: active ? '1px solid rgba(29,68,144,0.25)' : '1px solid var(--border)',
+              }}>
+                {active ? '▾' : '▸'} {label}
+              </button>
+            ))}
             {canEdit && (
               <span style={{ fontSize: '12px', color: 'var(--mobi-orange)', background: 'rgba(255,107,43,0.07)', border: '1px solid var(--mobi-orange-border)', padding: '3px 10px', borderRadius: '6px' }}>
                 ✏️ 각 행의 수정 버튼을 클릭하면 편집 가능합니다
@@ -351,24 +369,34 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
-                  {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','인턴 기록 요약','태도평가','지각/결석'] as const).map((h, i) => {
-                    const FREEZE_LEFT = [0, 110, 200, 310, 420] as const
-                    const FREEZE_MW   = [110, 90, 110, 110, 260] as const
-                    const frozen = i < 5
-                    return (
-                      <th key={h} style={{
+                  {(() => {
+                    const careerLeft = showSchool ? 420 : 310
+                    type Col = { label: string; frozen: true; left: number; width: number } | { label: string; frozen?: false }
+                    const cols: Col[] = [
+                      { label: '직무',        frozen: true, left: 0,          width: 110 },
+                      { label: '이름',        frozen: true, left: 110,        width: 90  },
+                      { label: 'MBTI / 나이', frozen: true, left: 200,        width: 110 },
+                      ...(showSchool ? [{ label: '학교', frozen: true as const, left: 310, width: 110 }] : []),
+                      ...(showCareer ? [{ label: '경력', frozen: true as const, left: careerLeft, width: 260 }] : []),
+                      { label: '수강체크율' }, { label: '미니테스트' }, { label: '공통테스트' },
+                      { label: 'TEST 상위 2과목' }, { label: 'TEST 하위 2과목' },
+                      { label: '과제 제출링크' }, { label: '인턴 기록 요약' }, { label: '태도평가' }, { label: '지각/결석' },
+                    ]
+                    const lastFrozenIdx = cols.reduce((acc, c, i) => c.frozen ? i : acc, -1)
+                    return cols.map((col, i) => (
+                      <th key={col.label} style={{
                         padding: '10px 8px', textAlign: 'left', fontWeight: 600,
                         color: 'var(--text-secondary)', fontSize: '11.5px',
                         borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap',
-                        ...(frozen ? {
-                          position: 'sticky' as const, left: FREEZE_LEFT[i], zIndex: 2,
-                          background: '#F8F7F4', minWidth: FREEZE_MW[i], width: FREEZE_MW[i],
+                        ...(col.frozen ? {
+                          position: 'sticky' as const, left: (col as any).left, zIndex: 2,
+                          background: '#F8F7F4', minWidth: (col as any).width, width: (col as any).width,
                           willChange: 'transform',
-                          ...(i === 4 ? { boxShadow: '3px 0 6px rgba(0,0,0,0.07)' } : {}),
+                          ...(i === lastFrozenIdx ? { boxShadow: '3px 0 6px rgba(0,0,0,0.07)' } : {}),
                         } : {}),
-                      }}>{h}</th>
-                    )
-                  })}
+                      }}>{col.label}</th>
+                    ))
+                  })()}
                   {canEdit && <th style={{ padding: '10px 8px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
                 </tr>
               </thead>
@@ -409,13 +437,17 @@ export default function DashboardPage() {
                         {!intern.mbti && !intern.age && <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
 
-                      {/* 학교 — frozen col 3 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform', borderBottom: '1px solid var(--border)' }}>{intern.school}</td>
+                      {/* 학교 — 토글 가능 */}
+                      {showSchool && (
+                        <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform', borderBottom: '1px solid var(--border)', ...(!showCareer ? { boxShadow: '3px 0 6px rgba(0,0,0,0.07)' } : {}) }}>{intern.school}</td>
+                      )}
 
-                      {/* 경력 — frozen col 4 (마지막 고정 + 그림자 구분선) */}
-                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: 260, width: 260, maxWidth: 400, position: 'sticky', left: 420, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', boxShadow: '3px 0 6px rgba(0,0,0,0.07)', willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{intern.career || '—'}</div>
-                      </td>
+                      {/* 경력 — 토글 가능 */}
+                      {showCareer && (
+                        <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px', minWidth: 260, width: 260, maxWidth: 400, position: 'sticky', left: showSchool ? 420 : 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', boxShadow: '3px 0 6px rgba(0,0,0,0.07)', willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
+                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{intern.career || '—'}</div>
+                        </td>
+                      )}
 
                       {/* 수강체크율 */}
                       <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>

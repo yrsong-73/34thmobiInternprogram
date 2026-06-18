@@ -344,6 +344,8 @@ function FlowChart({
   currentJob: string
   onHover: (rowIndex: number | null) => void
 }) {
+  const [isOpen, setIsOpen] = useState(false)
+
   if (allRows.length === 0) return null
 
   const relevantRows = allRows.filter(r =>
@@ -365,12 +367,16 @@ function FlowChart({
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
       borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)',
-      padding: '18px 22px', marginBottom: '18px',
+      padding: '14px 22px', marginBottom: '18px',
     }}>
-      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '14px' }}>
-        🗺️ 교육 흐름
+      <div
+        onClick={() => setIsOpen(v => !v)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '14px' : 0 }}
+      >
+        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>🗺️ 교육 흐름</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '6px' }}>
+      {isOpen && <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '6px' }}>
         {stageGroups.map((group, idx) => (
           <div key={group.stage} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
             {/* 스테이지 카드 */}
@@ -455,7 +461,7 @@ function FlowChart({
             )}
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -559,7 +565,7 @@ export default function SchedulePage() {
   const [previewSubmissionsMap, setPreviewSubmissionsMap] = useState<Record<number, string>>({})
 
   // 파생: 실제 렌더링에 사용하는 effective 값
-  const internPreviewActive = previewMode === 'intern' && !!previewInternName
+  const internPreviewActive = (previewMode === 'intern' || previewMode === 'intern-test') && !!previewInternName
   const effectiveIsCO1      = isCO1 && previewMode === 'off'
   const effectiveIsIntern   = isIntern || internPreviewActive
   const effectiveCanCheck   = effectiveIsCO1 || effectiveIsIntern
@@ -570,8 +576,8 @@ export default function SchedulePage() {
 
   // 인턴은 본인 직무 탭에서만 체크/제출 가능 (다른 탭은 읽기 전용)
   const isRealIntern  = isIntern && previewMode === 'off'
-  const internJobTab  = internJob === 'marketing_pm' ? 'marketing' : internJob
-  const canCheckHere  = effectiveCanCheck && previewMode === 'off' &&
+  const internJobTab  = internJob
+  const canCheckHere  = effectiveCanCheck && (previewMode === 'off' || previewMode === 'intern-test') &&
                         (!isRealIntern || !internJobTab || currentJob === internJobTab)
 
   useEffect(() => {
@@ -583,7 +589,7 @@ export default function SchedulePage() {
     if (!isIntern || status !== 'authenticated') return
     fetch('/api/interns/me')
       .then(r => r.json())
-      .then(d => { if (d.type) { setInternJob(d.type); setCurrentJob(d.type === 'marketing_pm' ? 'marketing' : d.type) } })
+      .then(d => { if (d.type) { setInternJob(d.type); setCurrentJob(d.type) } })
       .catch(() => {})
   }, [isIntern, status])
 
@@ -623,7 +629,7 @@ export default function SchedulePage() {
         setPreviewSubmissionsMap(map)
         // 인턴 직무 탭 자동 선택
         const intern = previewInternsList.find(i => i.name === previewInternName)
-        if (intern) setCurrentJob(intern.type === 'marketing_pm' ? 'marketing' : intern.type)
+        if (intern) setCurrentJob(intern.type)
       })
       .catch(() => {})
   }, [previewInternName, previewInternsList])
@@ -647,6 +653,12 @@ export default function SchedulePage() {
       })
       .catch(() => {/* 실패 시 빈 상태 유지 */})
   }, [status])
+
+  useEffect(() => {
+    if (hoveredFlowRow === null) return
+    const el = document.querySelector<HTMLElement>(`[data-row-index="${hoveredFlowRow}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [hoveredFlowRow])
 
   const dayGroups: DayGroup[] = (() => {
     const filtered = allRows.filter(r => {
@@ -674,22 +686,27 @@ export default function SchedulePage() {
   // 일반 체크박스 토글 (task 제외)
   async function toggleComplete(rowIndex: number, e: { stopPropagation(): void }) {
     e.stopPropagation()
-    if (previewMode !== 'off') return
-    const wasChecked = completedRows.has(rowIndex)
-    setCompletedRows(prev => {
+    const isTestMode = previewMode === 'intern-test' && !!previewInternName
+    if (previewMode !== 'off' && !isTestMode) return
+    const targetSet = isTestMode ? previewCompletedRows : completedRows
+    const setFn     = isTestMode ? setPreviewCompletedRows : setCompletedRows
+    const wasChecked = targetSet.has(rowIndex)
+    setFn(prev => {
       const next = new Set(prev)
       if (next.has(rowIndex)) { next.delete(rowIndex) } else { next.add(rowIndex) }
       return next
     })
     try {
+      const body: Record<string, unknown> = { scheduleRowIndex: rowIndex, checked: !wasChecked }
+      if (isTestMode) body.viewAsName = previewInternName
       const res = await fetch('/api/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduleRowIndex: rowIndex, checked: !wasChecked }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
     } catch {
-      setCompletedRows(prev => {
+      setFn(prev => {
         const next = new Set(prev)
         if (wasChecked) { next.add(rowIndex) } else { next.delete(rowIndex) }
         return next
@@ -700,16 +717,24 @@ export default function SchedulePage() {
 
   // 과제 URL 제출
   async function handleTaskSubmit(rowIndex: number, url: string) {
-    if (previewMode !== 'off') return
+    const isTestMode = previewMode === 'intern-test' && !!previewInternName
+    if (previewMode !== 'off' && !isTestMode) return
     try {
+      const body: Record<string, unknown> = { scheduleRowIndex: rowIndex, checked: true, submissionUrl: url }
+      if (isTestMode) body.viewAsName = previewInternName
       const res = await fetch('/api/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduleRowIndex: rowIndex, checked: true, submissionUrl: url }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
-      setCompletedRows(prev => new Set([...prev, rowIndex]))
-      setSubmissionsMap(prev => ({ ...prev, [rowIndex]: url }))
+      if (isTestMode) {
+        setPreviewCompletedRows(prev => new Set([...prev, rowIndex]))
+        setPreviewSubmissionsMap(prev => ({ ...prev, [rowIndex]: url }))
+      } else {
+        setCompletedRows(prev => new Set([...prev, rowIndex]))
+        setSubmissionsMap(prev => ({ ...prev, [rowIndex]: url }))
+      }
       setSubmitTarget(null)
       showToast('✅ 과제가 제출됐습니다')
     } catch {
@@ -944,7 +969,7 @@ export default function SchedulePage() {
               </button>
             )
           })}
-          {currentWeek === 2 && (
+          {currentWeek === 2 && effectiveIsCO1 && (
             <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>버전</span>
               {(['A', 'B'] as const).map(v => (
@@ -977,12 +1002,22 @@ export default function SchedulePage() {
           />
         </div>
 
+        {/* 인쇄용 헤더 */}
+        <div className="print-only" style={{ marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #1D4490' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#1D4490' }}>📅 34기 인턴십 교육 시간표</div>
+          <div style={{ fontSize: '12px', color: '#444', marginTop: '3px' }}>
+            {currentWeek === 1 ? 'Week 1 · 6/22~6/26' : 'Week 2 · 6/29~7/3'}
+            {' · '}
+            {JOB_TABS.find(t => t.key === currentJob)?.label ?? currentJob}
+          </div>
+        </div>
+
         {dayGroups.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
             {isCO1 ? '아직 강의가 없습니다. 헤더의 + 강의 추가 버튼을 사용하세요.' : '시간표 준비 중입니다.'}
           </div>
         ) : (
-          <div className="schedule-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto' }}>
+          <div className="schedule-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto', maxWidth: `${70 + dayGroups.length * 200}px` }}>
 
             {/* 헤더 */}
             <div style={{
@@ -1092,7 +1127,11 @@ export default function SchedulePage() {
                   >
                     <span style={{ fontSize: '12px', fontWeight: 700, color: '#B45309' }}>🍽️ 웰컴런치 및 간담회</span>
                     {lunchLec?.lunch_with ? (
-                      <span style={{ fontSize: '13px', color: '#B45309', fontWeight: 600 }}>👥 {lunchLec.lunch_with}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
+                        {lunchLec.lunch_with.split(',').map((p, i) => (
+                          <span key={i} style={{ fontSize: '12px', color: '#B45309', fontWeight: 600 }}>{i === 0 ? '👥 ' : ''}{p.trim()}</span>
+                        ))}
+                      </div>
                     ) : isCO1 ? (
                       <span style={{ fontSize: '9px', color: '#D97706', fontWeight: 400, fontStyle: 'italic' }}>+ 동행자 추가</span>
                     ) : null}
@@ -1119,6 +1158,7 @@ export default function SchedulePage() {
                     return (
                       <div
                         key={lec.rowIndex}
+                        data-row-index={lec.rowIndex}
                         style={{
                           gridColumn: di + 2,
                           gridRow: `${sr} / ${er}`,
@@ -1212,7 +1252,7 @@ export default function SchedulePage() {
                         )}
 
                         {lec.note?.replace(/#시험/g, '').trim() && (
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', fontStyle: 'italic' }}>{lec.note.replace(/#시험/g, '').trim()}</div>
+                          <div style={{ fontSize: '11px', color: '#111', marginTop: '3px' }}>✅ {lec.note.replace(/#시험/g, '').trim()}</div>
                         )}
 
 

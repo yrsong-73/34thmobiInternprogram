@@ -76,14 +76,21 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { scheduleRowIndex, checked, targetEmail, submissionUrl } = body
+  const { scheduleRowIndex, checked, targetEmail, submissionUrl, viewAsName } = body
 
   if (!scheduleRowIndex) {
     return NextResponse.json({ error: 'scheduleRowIndex 필수' }, { status: 400 })
   }
 
-  // CO1은 targetEmail 지정 가능, 아니면 자기 이메일 사용
-  const email = (role === 'CO1' && targetEmail) ? targetEmail : session.user.email
+  // CO1 테스트 모드: viewAsName으로 인턴 이메일 조회
+  let email = session.user.email!
+  if (role === 'CO1' && viewAsName) {
+    const users = await getUserPermissions()
+    const user  = users.find(u => u.name === viewAsName)
+    if (user) email = user.email
+  } else if (role === 'CO1' && targetEmail) {
+    email = targetEmail
+  }
 
   if (checked) {
     await addCompletion(email, scheduleRowIndex, submissionUrl)

@@ -297,9 +297,13 @@ export async function updateSettingKey(key: string, value: string): Promise<void
 
 export async function getNotices(): Promise<Notice[]> {
   try {
-    const rows = await readSheet('notices!A2:D')
+    const rows = await readSheet('notices!A2:E')
     return rows
-      .map((r, i) => ({ rowIndex: i + 2, title: r[0] || '', content: r[1] || '', author: r[2] || '', created_at: r[3] || '' }))
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        title: r[0] || '', content: r[1] || '', author: r[2] || '', created_at: r[3] || '',
+        visible: r[4] !== 'false',
+      }))
       .filter(n => n.title)
       .reverse()
   } catch { return [] }
@@ -314,19 +318,25 @@ async function ensureNoticesSheet(): Promise<void> {
       spreadsheetId: SHEET_ID,
       requestBody: { requests: [{ addSheet: { properties: { title: 'notices' } } }] },
     })
-    await appendRow('notices', ['title', 'content', 'author', 'created_at'])
+    await appendRow('notices', ['title', 'content', 'author', 'created_at', 'visible'])
   }
 }
 
 export async function addNotice(data: Omit<Notice, 'rowIndex'>): Promise<void> {
   await ensureNoticesSheet()
-  await appendRow('notices', [data.title, data.content, data.author, data.created_at])
+  await appendRow('notices', [data.title, data.content, data.author, data.created_at, ''])
 }
 
 export async function updateNotice(rowIndex: number, data: Pick<Notice, 'title' | 'content'>): Promise<void> {
-  const rows = await readSheet('notices!A2:D')
+  const rows = await readSheet('notices!A2:E')
   const existing = rows[rowIndex - 2] ?? []
-  await updateRow('notices', rowIndex, [data.title, data.content, existing[2] || '', existing[3] || ''])
+  await updateRow('notices', rowIndex, [data.title, data.content, existing[2] || '', existing[3] || '', existing[4] || ''])
+}
+
+export async function setNoticeVisible(rowIndex: number, visible: boolean): Promise<void> {
+  const rows = await readSheet('notices!A2:E')
+  const existing = rows[rowIndex - 2] ?? []
+  await updateRow('notices', rowIndex, [existing[0] || '', existing[1] || '', existing[2] || '', existing[3] || '', visible ? '' : 'false'])
 }
 
 export async function deleteNotice(rowIndex: number): Promise<void> {

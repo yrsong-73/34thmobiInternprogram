@@ -160,9 +160,10 @@ export default function Nav() {
             👁 권한 미리보기
           </span>
 
-          {(['off', 'member', 'intern'] as const).map(mode => {
-            const labels = { off: 'CO1 기본', member: '멤버로 보기', intern: '인턴으로 보기' }
+          {(['off', 'member', 'intern', 'intern-test'] as const).map(mode => {
+            const labels: Record<string, string> = { off: 'CO1 기본', member: '멤버로 보기', intern: '인턴으로 보기', 'intern-test': '인턴 테스트' }
             const active = previewMode === mode
+            const isTest = mode === 'intern-test'
             return (
               <button key={mode} onClick={() => setPreviewMode(mode)} style={{
                 padding: '4px 12px',
@@ -172,25 +173,25 @@ export default function Nav() {
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 transition: 'all 0.15s',
-                border: active ? 'none' : '1px solid var(--border)',
+                border: active ? 'none' : `1px solid ${isTest ? 'rgba(245,158,11,0.4)' : 'var(--border)'}`,
                 background: active
-                  ? (mode === 'off' ? 'var(--primary)' : '#6366F1')
-                  : '#fff',
-                color: active ? '#fff' : 'var(--text-secondary)',
+                  ? (mode === 'off' ? 'var(--primary)' : isTest ? '#F59E0B' : '#6366F1')
+                  : isTest ? 'rgba(245,158,11,0.06)' : '#fff',
+                color: active ? '#fff' : isTest ? '#B45309' : 'var(--text-secondary)',
               }}>
                 {labels[mode]}
               </button>
             )
           })}
 
-          {previewMode === 'intern' && (
+          {(previewMode === 'intern' || previewMode === 'intern-test') && (
             <select
               value={previewInternName}
               onChange={e => setPreviewInternName(e.target.value)}
               style={{
                 padding: '4px 10px',
                 borderRadius: '8px',
-                border: '1px solid var(--border)',
+                border: `1px solid ${previewMode === 'intern-test' ? 'rgba(245,158,11,0.5)' : 'var(--border)'}`,
                 fontSize: '11px',
                 fontFamily: 'inherit',
                 color: previewInternName ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -206,12 +207,12 @@ export default function Nav() {
           )}
 
           {previewMode !== 'off' && (
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: '4px' }}>
+            <span style={{ fontSize: '10px', color: previewMode === 'intern-test' ? '#B45309' : 'var(--text-muted)', fontStyle: 'italic', marginLeft: '4px' }}>
               {previewMode === 'member'
                 ? '멤버 시점으로 보는 중 · 편집 불가'
-                : (previewInternName
-                  ? `${previewInternName} 시점으로 보는 중 · 읽기 전용`
-                  : '인턴을 선택하면 해당 인턴 시점으로 전환됩니다')}
+                : previewMode === 'intern-test'
+                  ? (previewInternName ? `🧪 ${previewInternName} 테스트 중 · 실제 저장됨` : '인턴을 선택하면 테스트가 시작됩니다')
+                  : (previewInternName ? `${previewInternName} 시점으로 보는 중 · 읽기 전용` : '인턴을 선택하면 해당 인턴 시점으로 전환됩니다')}
             </span>
           )}
         </div>

@@ -130,13 +130,17 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* ── 인쇄: 화면 그리드 그대로 출력 ── */
+.print-only { display: none; }
+
+/* ── 인쇄: 세로 A4 한 페이지 출력 ── */
 @media print {
-  @page { size: A4 landscape; margin: 6mm; }
+  @page { size: A4 portrait; margin: 8mm; }
   nav, .no-print { display: none !important; }
-  body { background: white; zoom: 0.68; }
+  .print-only { display: block !important; }
+  body { background: white; zoom: 0.54; }
+  main { padding: 6px 10px !important; }
   /* 스케줄 카드 overflow 해제 */
-  .schedule-card { overflow: visible !important; box-shadow: none !important; border-radius: 0 !important; }
+  .schedule-card { overflow: visible !important; box-shadow: none !important; border-radius: 0 !important; max-width: none !important; }
   /* sticky 헤더 → 일반 블록으로 */
   .schedule-header { position: relative !important; }
   /* 인터랙티브 요소 숨김 */

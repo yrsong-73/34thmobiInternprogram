@@ -405,6 +405,16 @@ export default function NoticePage() {
     await fetchNotices()
   }
 
+  async function handleToggleVisible(rowIndex: number, visible: boolean) {
+    await fetch('/api/notices', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex, visible }),
+    })
+    showToast(visible ? '👁️ 공지가 공개됐습니다' : '🙈 공지가 숨김 처리됐습니다')
+    setNotices(prev => prev.map(n => n.rowIndex === rowIndex ? { ...n, visible } : n))
+  }
+
   if (status === 'loading' || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>불러오는 중...</div>
@@ -427,23 +437,25 @@ export default function NoticePage() {
           )}
         </div>
 
-        {notices.length === 0 ? (
+        {notices.filter(n => canEdit || n.visible).length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: '40px', opacity: 0.25, marginBottom: '12px' }}>📋</div>
             공지사항이 없습니다.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {notices.map(notice => {
+            {notices.filter(n => canEdit || n.visible).map(notice => {
               const isOpen = openIds.has(notice.rowIndex)
+              const isHidden = !notice.visible
               return (
                 <div key={notice.rowIndex} style={{
-                  background: 'var(--bg-card)',
-                  border: `1px solid ${isOpen ? 'rgba(255,107,43,0.4)' : 'var(--border)'}`,
+                  background: isHidden ? 'var(--bg-hover)' : 'var(--bg-card)',
+                  border: `1px solid ${isOpen ? 'rgba(255,107,43,0.4)' : isHidden ? 'var(--border)' : 'var(--border)'}`,
                   borderRadius: 'var(--radius)',
                   overflow: 'hidden',
                   boxShadow: isOpen ? '0 2px 12px rgba(255,107,43,0.08)' : 'var(--shadow)',
                   transition: 'border-color 0.2s, box-shadow 0.2s',
+                  opacity: isHidden ? 0.6 : 1,
                 }}>
                   {/* 제목 행 */}
                   <div
@@ -460,13 +472,26 @@ export default function NoticePage() {
                       display: 'inline-block', transition: 'transform 0.2s',
                       transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
                     }}>▶</span>
-                    <span style={{ fontSize: '15px', fontWeight: 700, flex: 1, color: 'var(--text-primary)' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 700, flex: 1, color: isHidden ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                       {notice.title}
                     </span>
+                    {isHidden && (
+                      <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '10px', background: '#F3F4F6', color: '#6B7280', fontWeight: 600 }}>숨김</span>
+                    )}
                     <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{notice.created_at}</span>
                     <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{notice.author}</span>
                     {canEdit && (
                       <div style={{ display: 'flex', gap: '5px' }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => handleToggleVisible(notice.rowIndex, !notice.visible)}
+                          style={{
+                            fontSize: '11px', padding: '3px 9px', borderRadius: '5px',
+                            border: `1px solid ${isHidden ? '#6EE7B7' : 'var(--border)'}`,
+                            background: isHidden ? '#ECFDF5' : '#fff',
+                            color: isHidden ? '#059669' : 'var(--text-secondary)',
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}>
+                          {isHidden ? '공개' : '숨김'}
+                        </button>
                         <button onClick={() => setEditTarget(notice)}
                           style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '5px', border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit' }}>
                           수정

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 
-export type PreviewMode = 'off' | 'member' | 'intern'
+export type PreviewMode = 'off' | 'member' | 'intern' | 'intern-test'
 
 interface PreviewContextValue {
   previewMode: PreviewMode
@@ -49,7 +49,8 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
 
   function setPreviewMode(mode: PreviewMode) {
     setPreviewModeState(mode)
-    if (mode !== 'intern') setPreviewInternName('')
+    // intern ↔ intern-test 전환 시 선택된 인턴 유지
+    if (mode !== 'intern' && mode !== 'intern-test') setPreviewInternName('')
   }
 
   return (

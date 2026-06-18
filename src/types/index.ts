@@ -17,7 +17,7 @@ export interface AuthUser {
 // 인턴 데이터
 // ──────────────────────────────────────────────
 
-export type InternJobType = 'marketing' | 'marketing_pm' | 'aiax' | 'biz'
+export type InternJobType = 'marketing' | 'aiax' | 'biz'
 
 export interface Intern {
   name: string
@@ -169,4 +169,5 @@ export interface Notice {
   content: string
   author: string
   created_at: string
+  visible: boolean  // E열: 빈칸/'true' = 공개, 'false' = 숨김
 }

@@ -300,7 +300,7 @@ export default function DashboardPage() {
                                   </a>
                                 ) : (
                                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    {task.name}{task.note ? ` · ${task.note}` : ''}
+                                    {task.name}
                                   </span>
                                 )}
                               </div>

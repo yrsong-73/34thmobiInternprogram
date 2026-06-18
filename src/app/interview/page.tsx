@@ -130,15 +130,6 @@ export default function InterviewPage() {
     setBooking(false)
   }
 
-  async function cancelSlot(rowIndex: number) {
-    await fetch('/api/interviews', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rowIndex, booked_by: '' }),
-    })
-    await fetchData()
-  }
-
   async function deleteSlot(rowIndex: number) {
     if (!confirm('삭제하시겠습니까?')) return
     await fetch('/api/interviews', {
@@ -210,15 +201,12 @@ export default function InterviewPage() {
                               <span style={{ color: '#15803D', fontSize: '12px', fontWeight: 600 }}>예약가능</span>
                             ) : (
                               // 예약됨
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: 'rgba(34,197,94,0.12)', color: '#15803D', border: '1px solid rgba(34,197,94,0.3)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', padding: '0 4px' }}>
+                                <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: 'rgba(34,197,94,0.12)', color: '#15803D', border: '1px solid rgba(34,197,94,0.3)', whiteSpace: 'nowrap' }}>
                                   {rec.booked_by}
                                 </span>
                                 {canEdit && (
-                                  <div style={{ display: 'flex', gap: '3px' }}>
-                                    <button onClick={() => cancelSlot(rec.rowIndex)} style={miniBtn('cancel')}>취소</button>
-                                    <button onClick={() => deleteSlot(rec.rowIndex)} style={miniBtn('delete')}>삭제</button>
-                                  </div>
+                                  <button onClick={() => deleteSlot(rec.rowIndex)} style={miniBtn('delete')}>삭제</button>
                                 )}
                               </div>
                             )}
@@ -279,10 +267,7 @@ export default function InterviewPage() {
                     <td style={td}>{s.time_slot}</td>
                     <td style={td}>
                       {canEdit && (
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button onClick={() => cancelSlot(s.rowIndex)} style={miniBtn('cancel')}>예약취소</button>
-                          <button onClick={() => deleteSlot(s.rowIndex)} style={miniBtn('delete')}>삭제</button>
-                        </div>
+                        <button onClick={() => deleteSlot(s.rowIndex)} style={miniBtn('delete')}>삭제</button>
                       )}
                     </td>
                   </tr>

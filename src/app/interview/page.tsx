@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
 
-const DEPARTMENTS = ['마케팅1팀','마케팅2팀','마케팅3팀','마케팅4팀','마케팅5팀','마케팅6팀','PM','CC']
+const DEPARTMENTS = ['마케팅1팀','마케팅2팀','마케팅3팀','마케팅4팀','마케팅5팀','마케팅6팀','PM','CC','HRBP']
 
 // 날짜별 면담 가능 슬롯 (30분 단위)
 const DATE_SLOTS: Record<string, string[]> = {
@@ -301,37 +301,21 @@ export default function InterviewPage() {
       <main style={{ maxWidth: '960px', margin: '0 auto', padding: '32px 20px' }}>
         {/* 타이틀 */}
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>면담 신청</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>마케팅 인턴 1:1 면담 슬롯 관리 · 1주차 (6/23 화 · 6/24 수 · 6/25 목)</p>
-        </div>
-
-        {/* 뷰 탭 */}
-        <div style={{ display: 'flex', gap: '2px', marginBottom: '16px', background: 'var(--bg-subtle)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
-          {(['intern', 'leader'] as const).map(m => (
-            <button key={m} onClick={() => setViewMode(m)} style={{
-              padding: '7px 20px', borderRadius: '7px', fontSize: '13px', fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', border: 'none',
-              background: viewMode === m ? '#fff' : 'transparent',
-              color: viewMode === m ? 'var(--primary)' : 'var(--text-muted)',
-              boxShadow: viewMode === m ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-            }}>
-              {m === 'intern' ? '마케팅 인턴 기준' : '팀 리더 기준'}
-            </button>
-          ))}
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>면담 신청</h1>
         </div>
 
         {/* 면담 신청 폼 */}
         {canEdit && (
           <div style={{
             background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-            boxShadow: 'var(--shadow)', padding: '16px 20px', marginBottom: '20px',
+            boxShadow: 'var(--shadow)', padding: '16px 20px', marginBottom: '16px',
           }}>
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
               📅 면담 신청
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div>
-                <label style={labelSt}>우리 팀 (부서)</label>
+                <label style={labelSt}>신청 부서</label>
                 <select value={fDept} onChange={e => setFDept(e.target.value)} style={selSt}>
                   {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -376,13 +360,23 @@ export default function InterviewPage() {
                 {booking ? '신청 중...' : '신청하기'}
               </button>
             </div>
-            {role === 'CO1' && (
-              <div style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                💡 CO1: 미오픈 슬롯도 신청 시 자동으로 열리며 예약됩니다. 표에서 직접 <strong>+ 열기</strong>로 슬롯만 오픈할 수도 있습니다.
-              </div>
-            )}
           </div>
         )}
+
+        {/* 뷰 탭 */}
+        <div style={{ display: 'flex', gap: '2px', marginBottom: '16px', background: 'var(--bg-subtle)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
+          {(['intern', 'leader'] as const).map(m => (
+            <button key={m} onClick={() => setViewMode(m)} style={{
+              padding: '7px 20px', borderRadius: '7px', fontSize: '13px', fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', border: 'none',
+              background: viewMode === m ? '#fff' : 'transparent',
+              color: viewMode === m ? 'var(--primary)' : 'var(--text-muted)',
+              boxShadow: viewMode === m ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+            }}>
+              {m === 'intern' ? '마케팅 인턴 기준' : '팀 리더 기준'}
+            </button>
+          ))}
+        </div>
 
         {/* 뷰 */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: '20px 24px' }}>

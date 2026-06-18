@@ -76,6 +76,7 @@ export interface ScheduleRow {
   day_label: string          // '1일차'
   date_label: string         // '6/22 월'
   eval_label: string         // 'DAY1 강의평가' or ''
+  eval_link?: string         // 강의평가 링크 URL (T열)
   time: string               // '10:00~10:30'
   name: string               // 강의명
   type: LectureType          // 강의 형태
@@ -98,6 +99,7 @@ export interface DayGroup {
   day_label: string
   date_label: string
   eval_label: string
+  eval_link?: string
   lectures: ScheduleRow[]
 }
 

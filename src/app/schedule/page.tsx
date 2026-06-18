@@ -67,7 +67,7 @@ function emptyRow(weekNum: number, dayNum: number, dayLabel: string, dateLabel: 
   return {
     week_num: weekNum, day_num: dayNum,
     day_label: dayLabel, date_label: dateLabel,
-    eval_label: evalLabel,
+    eval_label: evalLabel, eval_link: '',
     time: '', name: '', type: 'offline', teacher: '',
     duration: '', link_labels: [], link_urls: [],
     lunch_with: '', note: '', job_types: ['all'], location: '',
@@ -687,10 +687,13 @@ export default function SchedulePage() {
           day_label:  r.day_label,
           date_label: r.date_label,
           eval_label: r.eval_label,
+          eval_link:  r.eval_link || '',
           lectures:   [],
         })
       }
-      map.get(r.day_num)!.lectures.push(r)
+      const g = map.get(r.day_num)!
+      if (r.eval_link && !g.eval_link) g.eval_link = r.eval_link
+      g.lectures.push(r)
     })
     map.forEach(g => g.lectures.sort((a, b) => a.time.localeCompare(b.time)))
     return Array.from(map.values()).sort((a, b) => a.day_num - b.day_num)
@@ -1033,6 +1036,7 @@ export default function SchedulePage() {
             {isCO1 ? '아직 강의가 없습니다. 헤더의 + 강의 추가 버튼을 사용하세요.' : '시간표 준비 중입니다.'}
           </div>
         ) : (
+          <>
           <div className="schedule-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto' }}>
 
             {/* 헤더 */}
@@ -1158,7 +1162,7 @@ export default function SchedulePage() {
               {/* 강의 셀 */}
               {dayGroups.flatMap((day, di) =>
                 day.lectures
-                  .filter(lec => lec.type !== 'lunch' && !(lec.type === 'task' && !lec.time))
+                  .filter(lec => lec.type !== 'lunch' && lec.type !== 'task')
                   .map(lec => {
                     const rows = parseRows(lec.time)
                     if (!rows) return null
@@ -1312,7 +1316,7 @@ export default function SchedulePage() {
               )}
             </div>
 
-            {/* 하단 행: 강의평가 + 과제제출 */}
+            {/* 하단 행: 강의평가 */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: `70px repeat(${dayGroups.length}, minmax(200px, 1fr))`,
@@ -1320,7 +1324,6 @@ export default function SchedulePage() {
               borderTop: '2px solid var(--mobi-orange)',
               background: '#FFFAF7',
             }}>
-              {/* 시간 레이블 */}
               <div style={{
                 padding: '10px 8px 10px 4px', textAlign: 'right',
                 fontSize: '9.5px', fontWeight: 700, color: 'var(--mobi-orange)',
@@ -1328,19 +1331,17 @@ export default function SchedulePage() {
                 position: 'sticky', left: 0, background: '#FFFAF7', zIndex: 2,
                 display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
               }}>
-                평가·<br/>과제
+                강의<br/>평가
               </div>
               {dayGroups.map(day => {
                 const evalRowIndex = 10000 + day.day_num
                 const isEvalDone = effectiveCompleted.has(evalRowIndex)
-                const taskLecs = day.lectures.filter(l => l.type === 'task')
                 return (
                   <div key={day.day_num} style={{
                     borderLeft: '1px solid var(--border)',
                     padding: '8px 10px',
                     display: 'flex', flexDirection: 'column', gap: '5px',
                   }}>
-                    {/* 강의평가 */}
                     {day.eval_label && (
                       <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: canCheckHere ? 'pointer' : 'default' }}>
                         {effectiveCanCheck && (
@@ -1353,75 +1354,83 @@ export default function SchedulePage() {
                             style={{ width: '13px', height: '13px', cursor: canCheckHere ? 'pointer' : 'not-allowed', accentColor: 'var(--mobi-orange)', flexShrink: 0, opacity: canCheckHere ? 1 : 0.4 }}
                           />
                         )}
-                        <span style={{
-                          fontSize: '11px', fontWeight: 700,
-                          color: isEvalDone ? '#9CA3AF' : 'var(--mobi-orange)',
-                          textDecoration: isEvalDone ? 'line-through' : 'none',
-                        }}>
-                          📝 강의평가
-                        </span>
+                        {day.eval_link ? (
+                          <a href={day.eval_link} target="_blank" rel="noopener noreferrer" style={{
+                            fontSize: '11px', fontWeight: 700,
+                            color: isEvalDone ? '#9CA3AF' : 'var(--mobi-orange)',
+                            textDecoration: isEvalDone ? 'line-through' : 'none',
+                          }}>📝 강의평가</a>
+                        ) : (
+                          <span style={{
+                            fontSize: '11px', fontWeight: 700,
+                            color: isEvalDone ? '#9CA3AF' : 'var(--mobi-orange)',
+                            textDecoration: isEvalDone ? 'line-through' : 'none',
+                          }}>📝 강의평가</span>
+                        )}
                       </label>
                     )}
-                    {/* 과제폴더 링크 */}
-                    {submitUrl && taskLecs.length > 0 && (
-                      <a href={submitUrl} target="_blank" rel="noopener noreferrer"
-                        style={{ fontSize: '10px', color: '#059669', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        📁 과제폴더
-                      </a>
-                    )}
-                    {/* 과제 항목들 */}
-                    {taskLecs.map(lec => {
-                      const hasUrl = lec.link_urls.length > 0 && !!lec.link_urls[0]
-                      const submitted = lec.rowIndex !== undefined ? effectiveSubs[lec.rowIndex] : undefined
-                      if (!hasUrl) {
-                        // URL 없는 task → 마감 안내 텍스트만 표시
-                        return (
-                          <div key={lec.rowIndex} style={{ fontSize: '11px', fontWeight: 600, color: '#F59E0B' }}>
-                            📋 {lec.name}{lec.note ? ` · ${lec.note}` : ''}
-                          </div>
-                        )
-                      }
-                      return (
-                        <div key={lec.rowIndex} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          {effectiveCanCheck && lec.rowIndex !== undefined && (
-                            <input
-                              type="checkbox"
-                              checked={effectiveCompleted.has(lec.rowIndex)}
-                              onChange={e => toggleComplete(lec.rowIndex!, e)}
-                              disabled={!canCheckHere}
-                              title={!canCheckHere && isRealIntern ? '본인 직무 탭에서만 체크 가능' : undefined}
-                              style={{ width: '13px', height: '13px', cursor: canCheckHere ? 'pointer' : 'not-allowed', accentColor: '#F59E0B', flexShrink: 0, opacity: canCheckHere ? 1 : 0.4 }}
-                            />
-                          )}
-                          {submitted ? (
-                            <a href={submitted} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize: '10.5px', color: '#059669', fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}
-                              title={lec.name}>
-                              ✅ {lec.link_labels[0] || lec.name}
-                            </a>
-                          ) : canCheckHere ? (
-                            <button
-                              onClick={() => setSubmitTarget(lec)}
-                              style={{
-                                fontSize: '10px', fontWeight: 700,
-                                padding: '2px 7px', borderRadius: '5px',
-                                background: '#F59E0B', color: '#fff',
-                                border: 'none', cursor: 'pointer',
-                                fontFamily: 'inherit',
-                              }}>
-                              📎 {lec.link_labels[0] || '과제제출'}
-                            </button>
-                          ) : effectiveCanCheck ? (
-                            <span style={{ fontSize: '10px', color: '#9CA3AF', fontStyle: 'italic' }}>미제출</span>
-                          ) : null}
-                        </div>
-                      )
-                    })}
                   </div>
                 )
               })}
             </div>
           </div>
+
+          {/* 과제 제출 섹션 */}
+          {(() => {
+            const taskRowsForView = allRows.filter(r => {
+              if (r.week_num !== currentWeek) return false
+              if (r.week_num === 2 && r.week_variant && r.week_variant !== week2Variant) return false
+              if (r.type !== 'task') return false
+              return r.job_types.includes('all') || r.job_types.includes(currentJob)
+            })
+            if (taskRowsForView.length === 0) return null
+            return (
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '14px 18px', marginTop: '12px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400E', marginBottom: '10px' }}>📎 과제 제출</div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {taskRowsForView.map(lec => {
+                    const submitted = effectiveSubs[lec.rowIndex]
+                    return (
+                      <div key={lec.rowIndex} style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        background: submitted ? '#F0FDF4' : '#FFFBEB',
+                        border: `1px solid ${submitted ? '#86EFAC' : '#FDE68A'}`,
+                        borderRadius: '10px',
+                        padding: '8px 14px',
+                      }}>
+                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: submitted ? '#059669' : '#92400E' }}>
+                          {submitted ? '✅' : '📋'} {lec.name}
+                        </span>
+                        {lec.note && (
+                          <span style={{ fontSize: '10.5px', color: '#9CA3AF' }}>· {lec.note}</span>
+                        )}
+                        {submitted ? (
+                          <a href={submitted} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: '10.5px', color: '#059669', fontWeight: 600, textDecoration: 'none', background: '#DCFCE7', border: '1px solid #86EFAC', borderRadius: '6px', padding: '2px 8px' }}>
+                            링크 보기
+                          </a>
+                        ) : canCheckHere ? (
+                          <button
+                            onClick={() => setSubmitTarget(lec)}
+                            style={{
+                              fontSize: '10.5px', fontWeight: 700,
+                              padding: '3px 10px', borderRadius: '6px',
+                              background: '#F59E0B', color: '#fff',
+                              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                            }}>
+                            제출하기
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '10px', color: '#9CA3AF', fontStyle: 'italic' }}>미제출</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+          </>
         )}
       </main>
 

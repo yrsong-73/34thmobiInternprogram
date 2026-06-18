@@ -258,21 +258,34 @@ export default function DashboardPage() {
                 </div>
 
                 {/* 2×2 스탯 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
-                  {[
-                    { label: '수강체크율', val: attendRates[intern.name] ?? intern.attend_rate, unit: '%', max: 100 },
-                    { label: '과제제출',   val: intern.assign_rate, unit: '%', max: 100 },
-                    { label: '미니테스트', val: intern.score_mini,  unit: '점', max: 100 },
-                    { label: '공통테스트', val: intern.score_test,  unit: '점', max: 100 },
-                  ].map(s => (
-                    <div key={s.label} style={{ background: '#F8F7F4', borderRadius: '7px', padding: '7px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginBottom: '2px' }}>{s.label}</div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: scoreColor(s.val, s.max) }}>
-                        {s.val}{s.unit}
+                {(() => {
+                  const internTasks = taskRows.filter(t =>
+                    t.job_types.includes('all') || t.job_types.includes(intern.type)
+                  )
+                  const internSubCount = (submissions[intern.name] ?? []).length
+                  const taskDisplay = `${internSubCount}/${internTasks.length}`
+                  const taskColor = internSubCount === 0 ? 'var(--text-muted)' : internSubCount === internTasks.length ? '#059669' : '#D97706'
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+                      {[
+                        { label: '수강체크율', val: attendRates[intern.name] ?? intern.attend_rate, unit: '%', max: 100 },
+                        { label: '미니테스트', val: intern.score_mini, unit: '점', max: 100 },
+                        { label: '공통테스트', val: intern.score_test, unit: '점', max: 100 },
+                      ].map(s => (
+                        <div key={s.label} style={{ background: '#F8F7F4', borderRadius: '7px', padding: '7px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginBottom: '2px' }}>{s.label}</div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: scoreColor(s.val, s.max) }}>
+                            {s.val}{s.unit}
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ background: '#F8F7F4', borderRadius: '7px', padding: '7px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginBottom: '2px' }}>과제제출</div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: taskColor }}>{taskDisplay}</div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )
+                })()}
 
                 {/* 과제 제출 현황 패널 (CO1 + 카드 선택 시) */}
                 {isCO1 && isSelected && (() => {

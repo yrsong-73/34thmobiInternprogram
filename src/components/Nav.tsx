@@ -10,7 +10,7 @@ const TABS = [
   { id: 'dashboard', href: '/dashboard', icon: 'fa-solid fa-chart-simple',     label: '인턴 대시보드', roles: ['CO1', 'Member'] },
   { id: 'record',    href: '/record',    icon: 'fa-regular fa-clipboard',       label: '인턴 기록표',  roles: ['CO1'] },
   { id: 'interview', href: '/interview', icon: 'fa-regular fa-handshake',        label: '면담 신청',   roles: ['CO1', 'Member'] },
-  { id: 'settings',  href: '/settings',  icon: 'fa-solid fa-shield-halved',     label: '권한 관리',   roles: ['CO1'] },
+  { id: 'settings',  href: '/settings',  icon: 'fa-solid fa-shield-halved',     label: '관리자용',   roles: ['CO1'] },
 ]
 
 const ROLE_STYLE: Record<string, { bg: string; border: string; color: string }> = {

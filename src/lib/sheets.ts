@@ -83,10 +83,9 @@ async function clearRow(sheetName: string, rowIndex: number): Promise<void> {
 //       test_top | test_bottom
 // ──────────────────────────────────────────────
 
-function jobToType(job: string): 'marketing' | 'marketing_pm' | 'aiax' | 'biz' {
+function jobToType(job: string): 'marketing' | 'aiax' | 'biz' {
   if (job.includes('AI') || job.includes('AX')) return 'aiax'
   if (job.includes('사업') || job.includes('전략')) return 'biz'
-  if (job.includes('PM')) return 'marketing_pm'
   return 'marketing'
 }
 
@@ -97,7 +96,7 @@ export async function getInterns(): Promise<Intern[]> {
     .map((r, i) => ({
       name:            r[0] || '',
       job:             r[1] || '',
-      type:            ((r[2] as any) || jobToType(r[1])) as 'marketing' | 'marketing_pm' | 'aiax' | 'biz',
+      type:            (jobToType((r[2] as string) || r[1])) as 'marketing' | 'aiax' | 'biz',
       mbti:            r[3] || '',
       age:             r[4] || '',
       school:          r[5] || '',
@@ -322,7 +321,7 @@ async function ensureNoticesSheet(): Promise<void> {
   }
 }
 
-export async function addNotice(data: Omit<Notice, 'rowIndex'>): Promise<void> {
+export async function addNotice(data: Omit<Notice, 'rowIndex' | 'visible'>): Promise<void> {
   await ensureNoticesSheet()
   await appendRow('notices', [data.title, data.content, data.author, data.created_at, ''])
 }

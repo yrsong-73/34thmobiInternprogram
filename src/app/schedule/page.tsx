@@ -33,7 +33,7 @@ GRID_SLOTS.forEach((t, i) => { SLOT_ROW[t] = i + 1 })
 SLOT_ROW['19:00'] = 19
 
 const LUNCH_SR = SLOT_ROW['12:00']
-const LUNCH_ER = SLOT_ROW['13:00']
+const LUNCH_ER = SLOT_ROW['13:30']
 
 function parseRows(timeStr: string): { sr: number; er: number } | null {
   if (!timeStr || timeStr === '최종') return { sr: 18, er: 19 }
@@ -1113,12 +1113,15 @@ export default function SchedulePage() {
               {/* 웰컴런치 셀 */}
               {dayGroups.map((day, di) => {
                 const lunchLec = day.lectures.find(lec => lec.type === 'lunch')
+                const lunchRows = lunchLec?.time ? parseRows(lunchLec.time) : null
+                const lSR = lunchRows?.sr ?? LUNCH_SR
+                const lER = lunchRows?.er ?? LUNCH_ER
                 return (
                   <div
                     key={`lunch-${di}`}
                     style={{
                       gridColumn: di + 2,
-                      gridRow: `${LUNCH_SR} / ${LUNCH_ER}`,
+                      gridRow: `${lSR} / ${lER}`,
                       background: '#FFFDF5',
                       border: '2px dashed #F59E0B',
                       borderRadius: '6px',
@@ -1138,7 +1141,7 @@ export default function SchedulePage() {
                           isNew: true,
                           ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label),
                           type: 'lunch' as LectureType,
-                          time: '12:00~13:00',
+                          time: '12:00~13:30',
                           name: '웰컴런치',
                           duration: '1h',
                         })

@@ -220,6 +220,29 @@ export default function SettingsPage() {
           이 목록에 등록된 이메일만 로그인 가능하고, 역할에 따라 볼 수 있는 메뉴가 달라집니다.<br />
           인턴을 추가하려면 인턴의 Google 이메일 주소를 확인 후 역할 <strong>Intern</strong>으로 등록하세요.
         </div>
+
+        {/* 관리 시트 링크 — CO1 전용 */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: '20px 24px', marginTop: '20px' }}>
+          <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>📊 관리 시트</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {([
+              { label: '인턴십 구글 시트',       href: 'https://docs.google.com/spreadsheets/d/1fk-BF_q5YOeQ-UsWiZUNIZmWBY2AFZyyihhiBFG9RpE/edit?usp=sharing' },
+              { label: '인턴 페이지 관리용 시트', href: 'https://docs.google.com/spreadsheets/d/1KnZ-lI6AI5ssZSuDlHjBUuuS-qjcJ6On9sEXGnF12nE/edit?gid=0#gid=0' },
+            ] as { label: string; href: string }[]).map(({ label, href }) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 14px', borderRadius: '8px',
+                background: 'rgba(29,68,144,0.05)', border: '1px solid rgba(29,68,144,0.15)',
+                color: '#1D4490', fontSize: '13.5px', fontWeight: 600, textDecoration: 'none',
+                transition: 'all 0.15s',
+              }}>
+                <i className="fa-brands fa-google-drive" style={{ fontSize: '14px' }} />
+                {label}
+                <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '10px', opacity: 0.6, marginLeft: 'auto' }} />
+              </a>
+            ))}
+          </div>
+        </div>
       </main>
     </>
   )

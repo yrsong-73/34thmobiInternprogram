@@ -33,7 +33,7 @@ GRID_SLOTS.forEach((t, i) => { SLOT_ROW[t] = i + 1 })
 SLOT_ROW['19:00'] = 19
 
 const LUNCH_SR = SLOT_ROW['12:00']
-const LUNCH_ER = SLOT_ROW['13:30']
+const LUNCH_ER = SLOT_ROW['13:00']
 
 function parseRows(timeStr: string): { sr: number; er: number } | null {
   if (!timeStr || timeStr === '최종') return { sr: 18, er: 19 }
@@ -1138,7 +1138,7 @@ export default function SchedulePage() {
                           isNew: true,
                           ...emptyRow(currentWeek, day.day_num, day.day_label, day.date_label, day.eval_label),
                           type: 'lunch' as LectureType,
-                          time: '12:00~13:30',
+                          time: '12:00~13:00',
                           name: '웰컴런치',
                           duration: '1h',
                         })

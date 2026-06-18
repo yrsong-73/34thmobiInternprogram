@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     max_tokens: 400,
     messages: [{
       role: 'user',
-      content: `다음은 인턴 "${internName}"에 대한 관찰 기록들입니다:\n\n${recordText}\n\n위 기록들을 바탕으로 이 인턴의 태도, 강점, 성장포인트를 3~4문장으로 간결하게 요약해주세요. 한국어로 작성하고, 긍정적이고 건설적인 톤으로 써주세요.`,
+      content: `다음은 인턴 "${internName}"에 대한 관찰 기록들입니다:\n\n${recordText}\n\n위 기록들을 바탕으로 이 인턴의 태도, 강점, 성장포인트를 3~4문장으로 간결하게 요약해주세요. 한국어로 작성하고, 긍정적이고 건설적인 톤으로 써주세요. 제목이나 마크다운 헤더(#) 없이 바로 내용만 작성해주세요.`,
     }],
   })
 

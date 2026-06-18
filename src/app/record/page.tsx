@@ -169,7 +169,12 @@ export default function RecordPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setInternSummaries(p => ({ ...p, [internName]: data.summary ?? '' }))
+        const cleaned = (data.summary ?? '')
+          .split('\n')
+          .filter((line: string) => !line.trimStart().startsWith('#'))
+          .join('\n')
+          .trimStart()
+        setInternSummaries(p => ({ ...p, [internName]: cleaned }))
         showToast('✨ AI 요약이 완성됐습니다')
       } else {
         showToast('❌ AI 요약 실패. ANTHROPIC_API_KEY를 확인해주세요.')

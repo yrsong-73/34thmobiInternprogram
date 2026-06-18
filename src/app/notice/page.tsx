@@ -348,10 +348,10 @@ function NoticeComments({ noticeId, isCO1 }: { noticeId: number; isCO1: boolean 
 export default function NoticePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { isCO1Real } = usePreview()
+  const { isCO1Real, previewMode } = usePreview()
 
   const role    = (session?.user as any)?.role as string | undefined
-  const canEdit = role === 'CO1'
+  const canEdit = role === 'CO1' && previewMode === 'off'
 
   const [notices,    setNotices]    = useState<Notice[]>([])
   const [loading,    setLoading]    = useState(true)

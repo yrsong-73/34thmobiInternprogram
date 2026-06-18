@@ -380,8 +380,20 @@ function FlowChart({
         {stageGroups.map((group, idx) => (
           <div key={group.stage} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
             {/* 스테이지 카드 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+              {/* Completed! 배지 — 카드 위 */}
+              {group.allDone ? (
+                <div style={{
+                  alignSelf: 'center', marginBottom: '4px',
+                  background: '#16A34A', color: '#fff',
+                  fontSize: '12px', fontWeight: 800,
+                  padding: '3px 14px', borderRadius: '20px',
+                  animation: 'done-pop 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+                  letterSpacing: '0.3px',
+                }}>✅ Completed!</div>
+              ) : <div style={{ height: '24px' }} />}
             <div style={{
-              width: '180px', position: 'relative', marginTop: '16px',
+              width: '180px', position: 'relative',
               border: `2px solid ${group.allDone ? '#22C55E' : group.lectures.length > 0 ? group.meta.color + '50' : 'var(--border)'}`,
               borderRadius: '12px', overflow: 'hidden',
               background: group.allDone ? '#F0FDF4' : '#fff',
@@ -410,10 +422,6 @@ function FlowChart({
                 {/* 완료 상태 텍스트 */}
                 {group.lectures.length === 0 ? (
                   <div style={{ fontSize: '10px', marginTop: '3px', fontWeight: 600, color: 'var(--text-muted)' }}>강의 미배정</div>
-                ) : group.allDone ? (
-                  <div key="done" style={{ fontSize: '11px', marginTop: '3px', fontWeight: 800, color: '#BBF7D0', animation: 'done-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    ✨ DONE!
-                  </div>
                 ) : (
                   <div style={{ fontSize: '10px', marginTop: '3px', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
                     {group.completedCount}/{group.lectures.length} 완료
@@ -431,6 +439,10 @@ function FlowChart({
                       key={lec.rowIndex}
                       onMouseEnter={() => onHover(lec.rowIndex)}
                       onMouseLeave={() => onHover(null)}
+                      onClick={() => {
+                        const el = document.querySelector<HTMLElement>(`[data-row-index="${lec.rowIndex}"]`)
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '5px',
                         padding: '4px 7px', borderRadius: '7px', cursor: 'pointer',
@@ -453,9 +465,10 @@ function FlowChart({
                 })}
               </div>
             </div>
+            </div>{/* 안쪽 flex col 닫기 */}
             {/* 화살표 */}
             {idx < stageGroups.length - 1 && (
-              <div style={{ padding: '0 5px', fontSize: '18px', color: 'var(--border-strong)', flexShrink: 0, alignSelf: 'flex-start', marginTop: '46px' }}>
+              <div style={{ padding: '0 5px', fontSize: '18px', color: 'var(--border-strong)', flexShrink: 0, alignSelf: 'center', marginTop: '12px' }}>
                 →
               </div>
             )}
@@ -658,11 +671,7 @@ export default function SchedulePage() {
       .catch(() => {/* 실패 시 빈 상태 유지 */})
   }, [status])
 
-  useEffect(() => {
-    if (hoveredFlowRow === null) return
-    const el = document.querySelector<HTMLElement>(`[data-row-index="${hoveredFlowRow}"]`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [hoveredFlowRow])
+  // hover → 하이라이트만, click → 스크롤 (FlowChart 내부에서 직접 처리)
 
   const dayGroups: DayGroup[] = (() => {
     const filtered = allRows.filter(r => {

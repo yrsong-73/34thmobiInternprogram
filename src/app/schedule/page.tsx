@@ -1029,7 +1029,7 @@ export default function SchedulePage() {
             {/* 헤더 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${dayGroups.length}, 200px)`,
+              gridTemplateColumns: `70px repeat(${dayGroups.length}, minmax(200px, 1fr))`,
               position: 'sticky', top: 0, zIndex: 10,
               background: 'var(--mobi-dark)',
               borderBottom: '2px solid var(--border)',
@@ -1056,7 +1056,7 @@ export default function SchedulePage() {
             {/* 그리드 바디 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${dayGroups.length}, 200px)`,
+              gridTemplateColumns: `70px repeat(${dayGroups.length}, minmax(200px, 1fr))`,
               gridTemplateRows: `repeat(${GRID_SLOTS.length}, 100px)`,
               position: 'relative',
               minWidth: `${70 + dayGroups.length * 160}px`,
@@ -1306,7 +1306,7 @@ export default function SchedulePage() {
             {/* 하단 행: 강의평가 + 과제제출 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${dayGroups.length}, 200px)`,
+              gridTemplateColumns: `70px repeat(${dayGroups.length}, minmax(200px, 1fr))`,
               minWidth: `${70 + dayGroups.length * 160}px`,
               borderTop: '2px solid var(--mobi-orange)',
               background: '#FFFAF7',

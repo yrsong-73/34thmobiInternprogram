@@ -351,7 +351,7 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
-                  {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'] as const).map((h, i) => {
+                  {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','인턴 기록 요약','지각/결석'] as const).map((h, i) => {
                     const FREEZE_LEFT = [0, 110, 200, 310, 420] as const
                     const FREEZE_MW   = [110, 90, 110, 110, 260] as const
                     const frozen = i < 5
@@ -518,24 +518,7 @@ export default function DashboardPage() {
                         )}
                       </td>
 
-                      {/* 지각/결석 */}
-                      <td style={{ padding: '12px 8px', minWidth: '120px', borderBottom: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={attendNotes[intern.name] ?? (intern as any).attend_note ?? ''}
-                            placeholder="예) 지각 1회/병원"
-                            onChange={e => setAttendNotes(prev => ({ ...prev, [intern.name]: e.target.value }))}
-                            style={{ width: '100%', padding: '4px 8px', border: '1px solid var(--mobi-orange)', borderRadius: '5px', fontSize: '12px', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: '12.5px', color: attendNote ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: attendNote ? 'normal' : 'italic' }}>
-                            {attendNote || '—'}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 태도 요약 (기록 내용 전체 + summary 필드) */}
+                      {/* 인턴 기록 요약 (기록 내용 전체 + summary 필드) */}
                       <td style={{ padding: '12px 8px', minWidth: '200px', maxWidth: '320px', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <textarea
@@ -566,6 +549,23 @@ export default function DashboardPage() {
                               <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>
                             )}
                           </div>
+                        )}
+                      </td>
+
+                      {/* 지각/결석 */}
+                      <td style={{ padding: '12px 8px', minWidth: '120px', borderBottom: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={attendNotes[intern.name] ?? (intern as any).attend_note ?? ''}
+                            placeholder="예) 지각 1회/병원"
+                            onChange={e => setAttendNotes(prev => ({ ...prev, [intern.name]: e.target.value }))}
+                            style={{ width: '100%', padding: '4px 8px', border: '1px solid var(--mobi-orange)', borderRadius: '5px', fontSize: '12px', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: '12.5px', color: attendNote ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: attendNote ? 'normal' : 'italic' }}>
+                            {attendNote || '—'}
+                          </span>
                         )}
                       </td>
 

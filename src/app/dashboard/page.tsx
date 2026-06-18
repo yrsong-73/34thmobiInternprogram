@@ -336,7 +336,7 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8F7F4' }}>
                   {(['직무','이름','MBTI / 나이','학교','경력','수강체크율','미니테스트','공통테스트','태도평가','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','지각/결석','태도 요약'] as const).map((h, i) => {
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 수강체크율 */}
-                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <input type="number" value={editData.attend_rate ?? intern.attend_rate}
                             onClick={e => e.stopPropagation()}
@@ -418,7 +418,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 미니테스트 */}
-                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <input type="number" value={editData.score_mini ?? intern.score_mini}
                             onClick={e => e.stopPropagation()}
@@ -430,7 +430,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 공통테스트 */}
-                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <input type="number" value={editData.score_test ?? intern.score_test}
                             onClick={e => e.stopPropagation()}
@@ -442,7 +442,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 태도평가 */}
-                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <input type="number" min={0} max={5} value={editData.score_attitude ?? intern.score_attitude}
                             onClick={e => e.stopPropagation()}
@@ -454,7 +454,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* TEST 상위 2과목 */}
-                      <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <input
                             type="text"
@@ -472,7 +472,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* TEST 하위 2과목 */}
-                      <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '120px', fontSize: '12.5px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <input
                             type="text"
@@ -490,7 +490,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 과제 제출링크 */}
-                      <td style={{ padding: '12px 8px', minWidth: '140px' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '140px', borderBottom: '1px solid var(--border)' }}>
                         {(submissions[intern.name] ?? []).length === 0 ? (
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>없음</span>
                         ) : (
@@ -507,7 +507,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 지각/결석 */}
-                      <td style={{ padding: '12px 8px', minWidth: '120px' }} onClick={e => e.stopPropagation()}>
+                      <td style={{ padding: '12px 8px', minWidth: '120px', borderBottom: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
                         {isEditing ? (
                           <input
                             type="text"
@@ -524,7 +524,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* 태도 요약 (기록 내용 전체 + summary 필드) */}
-                      <td style={{ padding: '12px 8px', minWidth: '200px', maxWidth: '320px' }}>
+                      <td style={{ padding: '12px 8px', minWidth: '200px', maxWidth: '320px', borderBottom: '1px solid var(--border)' }}>
                         {isEditing ? (
                           <textarea
                             value={editData.summary ?? intern.summary ?? ''}
@@ -559,7 +559,7 @@ export default function DashboardPage() {
 
                       {/* 수정/저장/취소 버튼 (실제 CO1 + 미리보기 꺼진 상태) */}
                       {canEdit && (
-                        <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
                           {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <button onClick={saveEdit} disabled={saving}

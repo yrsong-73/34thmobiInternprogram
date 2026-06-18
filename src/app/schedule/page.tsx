@@ -950,7 +950,7 @@ export default function SchedulePage() {
 
         <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           {([1, 2] as const).map(w => {
-            if (w === 2 && !week2Visible && !effectiveIsCO1) return null
+            if (w === 2 && !week2Visible && !isCO1) return null
             const isHidden = w === 2 && !week2Visible
             return (
               <button key={w} onClick={() => setCurrentWeek(w)}

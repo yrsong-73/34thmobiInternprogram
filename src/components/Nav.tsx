@@ -184,14 +184,14 @@ export default function Nav() {
             )
           })}
 
-          {(previewMode === 'intern' || previewMode === 'intern-test') && (
+          {previewMode === 'intern' && (
             <select
               value={previewInternName}
               onChange={e => setPreviewInternName(e.target.value)}
               style={{
                 padding: '4px 10px',
                 borderRadius: '8px',
-                border: `1px solid ${previewMode === 'intern-test' ? 'rgba(245,158,11,0.5)' : 'var(--border)'}`,
+                border: '1px solid var(--border)',
                 fontSize: '11px',
                 fontFamily: 'inherit',
                 color: previewInternName ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -211,7 +211,7 @@ export default function Nav() {
               {previewMode === 'member'
                 ? '멤버 시점으로 보는 중 · 편집 불가'
                 : previewMode === 'intern-test'
-                  ? (previewInternName ? `🧪 ${previewInternName} 테스트 중 · 실제 저장됨` : '인턴을 선택하면 테스트가 시작됩니다')
+                  ? '🧪 가상 인턴 테스트 중 · 저장 안됨'
                   : (previewInternName ? `${previewInternName} 시점으로 보는 중 · 읽기 전용` : '인턴을 선택하면 해당 인턴 시점으로 전환됩니다')}
             </span>
           )}

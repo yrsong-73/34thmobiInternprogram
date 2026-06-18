@@ -563,14 +563,18 @@ export default function SchedulePage() {
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
   const [previewCompletedRows, setPreviewCompletedRows] = useState<Set<number>>(new Set())
   const [previewSubmissionsMap, setPreviewSubmissionsMap] = useState<Record<number, string>>({})
+  const [testCompletedRows,    setTestCompletedRows]    = useState<Set<number>>(new Set())
 
   // 파생: 실제 렌더링에 사용하는 effective 값
-  const internPreviewActive = (previewMode === 'intern' || previewMode === 'intern-test') && !!previewInternName
+  const internPreviewActive = previewMode === 'intern' && !!previewInternName
+  const internTestActive    = previewMode === 'intern-test'
   const effectiveIsCO1      = isCO1 && previewMode === 'off'
-  const effectiveIsIntern   = isIntern || internPreviewActive
+  const effectiveIsIntern   = isIntern || internPreviewActive || internTestActive
   const effectiveCanCheck   = effectiveIsCO1 || effectiveIsIntern
   const effectiveCompleted  = previewMode === 'member' ? new Set<number>() :
-                              internPreviewActive ? previewCompletedRows : completedRows
+                              internPreviewActive ? previewCompletedRows :
+                              internTestActive    ? testCompletedRows :
+                              completedRows
   const effectiveSubs       = previewMode === 'member' ? {} :
                               internPreviewActive ? previewSubmissionsMap : submissionsMap
 
@@ -686,29 +690,32 @@ export default function SchedulePage() {
   // 일반 체크박스 토글 (task 제외)
   async function toggleComplete(rowIndex: number, e: { stopPropagation(): void }) {
     e.stopPropagation()
-    const isTestMode = previewMode === 'intern-test' && !!previewInternName
-    if (previewMode !== 'off' && !isTestMode) return
-    const targetSet = isTestMode ? previewCompletedRows : completedRows
-    const setFn     = isTestMode ? setPreviewCompletedRows : setCompletedRows
-    const wasChecked = targetSet.has(rowIndex)
-    setFn(prev => {
+    if (previewMode !== 'off' && !internTestActive) return
+    if (internTestActive) {
+      setTestCompletedRows(prev => {
+        const next = new Set(prev)
+        next.has(rowIndex) ? next.delete(rowIndex) : next.add(rowIndex)
+        return next
+      })
+      return
+    }
+    const wasChecked = completedRows.has(rowIndex)
+    setCompletedRows(prev => {
       const next = new Set(prev)
-      if (next.has(rowIndex)) { next.delete(rowIndex) } else { next.add(rowIndex) }
+      next.has(rowIndex) ? next.delete(rowIndex) : next.add(rowIndex)
       return next
     })
     try {
-      const body: Record<string, unknown> = { scheduleRowIndex: rowIndex, checked: !wasChecked }
-      if (isTestMode) body.viewAsName = previewInternName
       const res = await fetch('/api/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ scheduleRowIndex: rowIndex, checked: !wasChecked }),
       })
       if (!res.ok) throw new Error()
     } catch {
-      setFn(prev => {
+      setCompletedRows(prev => {
         const next = new Set(prev)
-        if (wasChecked) { next.add(rowIndex) } else { next.delete(rowIndex) }
+        wasChecked ? next.add(rowIndex) : next.delete(rowIndex)
         return next
       })
       showToast('⚠️ 저장 실패. 다시 시도해주세요.')
@@ -717,21 +724,21 @@ export default function SchedulePage() {
 
   // 과제 URL 제출
   async function handleTaskSubmit(rowIndex: number, url: string) {
-    const isTestMode = previewMode === 'intern-test' && !!previewInternName
-    if (previewMode !== 'off' && !isTestMode) return
+    if (previewMode !== 'off' && !internTestActive) return
+    if (internTestActive) {
+      setTestCompletedRows(prev => new Set([...prev, rowIndex]))
+      showToast('🧪 테스트 모드 - 저장되지 않습니다')
+      return
+    }
     try {
       const body: Record<string, unknown> = { scheduleRowIndex: rowIndex, checked: true, submissionUrl: url }
-      if (isTestMode) body.viewAsName = previewInternName
       const res = await fetch('/api/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
-      if (isTestMode) {
-        setPreviewCompletedRows(prev => new Set([...prev, rowIndex]))
-        setPreviewSubmissionsMap(prev => ({ ...prev, [rowIndex]: url }))
-      } else {
+      {
         setCompletedRows(prev => new Set([...prev, rowIndex]))
         setSubmissionsMap(prev => ({ ...prev, [rowIndex]: url }))
       }
@@ -1017,12 +1024,12 @@ export default function SchedulePage() {
             {isCO1 ? '아직 강의가 없습니다. 헤더의 + 강의 추가 버튼을 사용하세요.' : '시간표 준비 중입니다.'}
           </div>
         ) : (
-          <div className="schedule-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto', maxWidth: `${70 + dayGroups.length * 200}px` }}>
+          <div className="schedule-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', overflowX: 'auto' }}>
 
             {/* 헤더 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${dayGroups.length}, 1fr)`,
+              gridTemplateColumns: `70px repeat(${dayGroups.length}, 200px)`,
               position: 'sticky', top: 0, zIndex: 10,
               background: 'var(--mobi-dark)',
               borderBottom: '2px solid var(--border)',
@@ -1049,7 +1056,7 @@ export default function SchedulePage() {
             {/* 그리드 바디 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${dayGroups.length}, 1fr)`,
+              gridTemplateColumns: `70px repeat(${dayGroups.length}, 200px)`,
               gridTemplateRows: `repeat(${GRID_SLOTS.length}, 100px)`,
               position: 'relative',
               minWidth: `${70 + dayGroups.length * 160}px`,
@@ -1299,7 +1306,7 @@ export default function SchedulePage() {
             {/* 하단 행: 강의평가 + 과제제출 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `70px repeat(${dayGroups.length}, 1fr)`,
+              gridTemplateColumns: `70px repeat(${dayGroups.length}, 200px)`,
               minWidth: `${70 + dayGroups.length * 160}px`,
               borderTop: '2px solid var(--mobi-orange)',
               background: '#FFFAF7',

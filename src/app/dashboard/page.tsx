@@ -19,7 +19,6 @@ const JOB_FILTER = [
   { key: 'all',       label: '전체' },
   { key: 'marketing', label: '마케팅' },
   { key: 'aiax',      label: 'AI·AX' },
-  { key: 'biz',       label: '사업기획·전략' },
 ]
 
 const JOB_COLOR: Record<string, string> = {
@@ -254,8 +253,8 @@ export default function DashboardPage() {
                     {intern.job}
                   </span>
                   <div style={{ fontWeight: 700, fontSize: '15px' }}>{intern.name}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{intern.mbti} · {intern.age}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{intern.school}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px' }}>{intern.mbti} · {intern.age}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-primary)', marginTop: '1px' }}>{intern.school}</div>
                 </div>
 
                 {/* 2×2 스탯 */}

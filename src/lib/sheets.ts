@@ -96,7 +96,7 @@ export async function getInterns(): Promise<Intern[]> {
     .map((r, i) => ({
       name:            r[0] || '',
       job:             r[1] || '',
-      type:            (jobToType((r[2] as string) || r[1])) as 'marketing' | 'aiax' | 'biz',
+      type:            ((['marketing','aiax','biz'] as string[]).includes(r[2]) ? r[2] : jobToType(r[1])) as 'marketing' | 'aiax' | 'biz',
       mbti:            r[3] || '',
       age:             r[4] || '',
       school:          r[5] || '',

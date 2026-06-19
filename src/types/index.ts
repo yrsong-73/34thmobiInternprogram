@@ -36,6 +36,8 @@ export interface Intern {
   summary: string            // 종합 코멘트
   test_top?: string          // TEST 상위 2과목
   test_bottom?: string       // TEST 하위 2과목
+  final_summary?: string     // P열 — 최종 요약 (마사부 리더 공개용, HRBP 작성)
+  final_summary_public?: boolean // Q열 — 리더 공개 여부
   rowIndex?: number          // Sheets 행 번호 (수정 시 사용)
 }
 

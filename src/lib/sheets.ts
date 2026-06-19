@@ -90,31 +90,33 @@ function jobToType(job: string): 'marketing' | 'aiax' | 'biz' {
 }
 
 export async function getInterns(): Promise<Intern[]> {
-  const rows = await readSheet('interns!A2:O')
+  const rows = await readSheet('interns!A2:Q')
   return rows
     .filter(r => r[0])
     .map((r, i) => ({
-      name:            r[0] || '',
-      job:             r[1] || '',
-      type:            ((['marketing','aiax','biz'] as string[]).includes(r[2]) ? r[2] : jobToType(r[1])) as 'marketing' | 'aiax' | 'biz',
-      mbti:            r[3] || '',
-      age:             r[4] || '',
-      school:          r[5] || '',
-      career:          r[6] || '',
-      score_mini:      Number(r[7]) || 0,
-      score_test:      Number(r[8]) || 0,
-      score_attitude:  Number(r[9]) || 0,
-      attend_rate:     Number(r[10]) || 0,
-      assign_rate:     Number(r[11]) || 0,
-      summary:         r[12] || '',
-      test_top:        r[13] || '',
-      test_bottom:     r[14] || '',
-      rowIndex:        i + 2,
+      name:                 r[0] || '',
+      job:                  r[1] || '',
+      type:                 ((['marketing','aiax','biz'] as string[]).includes(r[2]) ? r[2] : jobToType(r[1])) as 'marketing' | 'aiax' | 'biz',
+      mbti:                 r[3] || '',
+      age:                  r[4] || '',
+      school:               r[5] || '',
+      career:               r[6] || '',
+      score_mini:           Number(r[7]) || 0,
+      score_test:           Number(r[8]) || 0,
+      score_attitude:       Number(r[9]) || 0,
+      attend_rate:          Number(r[10]) || 0,
+      assign_rate:          Number(r[11]) || 0,
+      summary:              r[12] || '',
+      test_top:             r[13] || '',
+      test_bottom:          r[14] || '',
+      final_summary:        r[15] || '',
+      final_summary_public: r[16]?.toLowerCase() === 'true',
+      rowIndex:             i + 2,
     }))
 }
 
 export async function updateIntern(rowIndex: number, data: Partial<Intern>): Promise<void> {
-  const rows = await readSheet(`interns!A${rowIndex}:O${rowIndex}`)
+  const rows = await readSheet(`interns!A${rowIndex}:Q${rowIndex}`)
   const existing = rows[0] || []
   const merged = [
     data.name             ?? existing[0]  ?? '',
@@ -132,6 +134,8 @@ export async function updateIntern(rowIndex: number, data: Partial<Intern>): Pro
     data.summary          ?? existing[12] ?? '',
     data.test_top         ?? existing[13] ?? '',
     data.test_bottom      ?? existing[14] ?? '',
+    data.final_summary          !== undefined ? data.final_summary          : (existing[15] ?? ''),
+    data.final_summary_public   !== undefined ? (data.final_summary_public ? 'true' : '') : (existing[16] ?? ''),
   ]
   await updateRow('interns', rowIndex, merged)
 }

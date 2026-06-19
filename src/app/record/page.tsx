@@ -56,12 +56,15 @@ export default function RecordPage() {
   const isCO1    = role === 'CO1'
 
   const [internsList, setInternsList]   = useState<{ name: string; job: string; type: string }[]>([])
-  const [internsData, setInternsData]   = useState<{ name: string; rowIndex: number; summary: string }[]>([])
+  const [internsData, setInternsData]   = useState<{ name: string; rowIndex: number; summary: string; final_summary: string; final_summary_public: boolean }[]>([])
   const [records, setRecords]           = useState<InternRecord[]>([])
   const [loading, setLoading]           = useState(true)
   const [saving, setSaving]             = useState(false)
   const [internSummaries, setInternSummaries] = useState<Record<string, string>>({})
   const [savingSum, setSavingSum]       = useState<Record<string, boolean>>({})
+  const [finalSummaries, setFinalSummaries] = useState<Record<string, string>>({})
+  const [finalPublic, setFinalPublic]   = useState<Record<string, boolean>>({})
+  const [savingFinal, setSavingFinal]   = useState<Record<string, boolean>>({})
   const [aiLoading, setAiLoading]       = useState<Record<string, boolean>>({})
   // 작성자 뷰 (기본: 본인)
   const [viewAuthor, setViewAuthor]     = useState('')
@@ -95,10 +98,21 @@ export default function RecordPage() {
       const data = await internsRes.json()
       const interns = data.interns ?? []
       setInternsList(interns.map((i: any) => ({ name: i.name, job: i.job, type: i.type })))
-      setInternsData(interns.map((i: any) => ({ name: i.name, rowIndex: i.rowIndex, summary: i.summary ?? '' })))
-      const sumMap: Record<string, string> = {}
-      interns.forEach((i: any) => { sumMap[i.name] = i.summary ?? '' })
+      setInternsData(interns.map((i: any) => ({
+        name: i.name, rowIndex: i.rowIndex, summary: i.summary ?? '',
+        final_summary: i.final_summary ?? '', final_summary_public: i.final_summary_public ?? false,
+      })))
+      const sumMap: Record<string, string>  = {}
+      const finalMap: Record<string, string>  = {}
+      const pubMap:   Record<string, boolean> = {}
+      interns.forEach((i: any) => {
+        sumMap[i.name]   = i.summary ?? ''
+        finalMap[i.name] = i.final_summary ?? ''
+        pubMap[i.name]   = i.final_summary_public ?? false
+      })
       setInternSummaries(sumMap)
+      setFinalSummaries(finalMap)
+      setFinalPublic(pubMap)
     }
     setLoading(false)
   }
@@ -155,6 +169,23 @@ export default function RecordPage() {
     })
     showToast('✅ 요약이 저장됐습니다')
     setSavingSum(p => ({ ...p, [internName]: false }))
+  }
+
+  async function saveFinalSummary(internName: string) {
+    const intern = internsData.find(i => i.name === internName)
+    if (!intern?.rowIndex) return
+    setSavingFinal(p => ({ ...p, [internName]: true }))
+    await fetch('/api/interns', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rowIndex: intern.rowIndex,
+        final_summary: finalSummaries[internName] ?? '',
+        final_summary_public: finalPublic[internName] ?? false,
+      }),
+    })
+    showToast('✅ 최종 요약이 저장됐습니다')
+    setSavingFinal(p => ({ ...p, [internName]: false }))
   }
 
   async function generateAiSummary(internName: string) {
@@ -466,6 +497,45 @@ export default function RecordPage() {
                         rows={3}
                         placeholder="인턴에 대한 종합 요약을 입력하세요..."
                         style={{ width: '100%', border: '1px solid #FDE68A', borderRadius: '6px', padding: '8px 10px', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff' }}
+                      />
+                    </div>
+
+                    {/* 최종 요약 (마사부 리더 공개용) */}
+                    <div style={{
+                      background: finalPublic[internName] ? '#EFF6FF' : '#F8F7F4',
+                      border: `1px solid ${finalPublic[internName] ? '#BFDBFE' : 'var(--border)'}`,
+                      borderRadius: '10px', padding: '12px 14px', marginBottom: '10px',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#1D4490' }}>📋 최종 요약</span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>마사부 리더 공개용 · HRBP 작성</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => setFinalPublic(p => ({ ...p, [internName]: !p[internName] }))}
+                            style={{
+                              fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit',
+                              border: `1px solid ${finalPublic[internName] ? '#3B82F6' : 'var(--border-strong)'}`,
+                              background: finalPublic[internName] ? '#3B82F6' : '#fff',
+                              color: finalPublic[internName] ? '#fff' : 'var(--text-muted)',
+                            }}>
+                            {finalPublic[internName] ? '공개 ON' : '공개 OFF'}
+                          </button>
+                          <button
+                            onClick={() => saveFinalSummary(internName)}
+                            disabled={!!savingFinal[internName]}
+                            style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', border: 'none', background: savingFinal[internName] ? '#93C5FD' : '#3B82F6', color: '#fff', cursor: savingFinal[internName] ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                            {savingFinal[internName] ? '저장 중...' : '저장'}
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        value={finalSummaries[internName] ?? ''}
+                        onChange={e => setFinalSummaries(p => ({ ...p, [internName]: e.target.value }))}
+                        rows={3}
+                        placeholder="리더 공개용 최종 요약을 입력하세요..."
+                        style={{ width: '100%', border: `1px solid ${finalPublic[internName] ? '#BFDBFE' : 'var(--border)'}`, borderRadius: '6px', padding: '8px 10px', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' as const, background: '#fff' }}
                       />
                     </div>
 

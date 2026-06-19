@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Nav from '@/components/Nav'
-import type { LectureFeedback, ScheduleRow } from '@/types'
+import type { Intern, LectureFeedback, ScheduleRow } from '@/types'
 
 const Q_META = [
   { key: 'q1_satisfaction' as const, label: '전반 만족도' },
@@ -18,6 +18,11 @@ function avg(nums: number[]): number {
   const valid = nums.filter(n => n > 0)
   if (valid.length === 0) return 0
   return valid.reduce((a, b) => a + b, 0) / valid.length
+}
+
+function getTargetCount(row: ScheduleRow, interns: Intern[]): number {
+  if (row.job_types.includes('all')) return interns.length
+  return interns.filter(i => row.job_types.includes(i.type)).length
 }
 
 function ScoreBar({ score, max = 5 }: { score: number; max?: number }) {
@@ -39,25 +44,40 @@ export default function FeedbackAdminPage() {
   const router = useRouter()
   const role = (session?.user as any)?.role as string | undefined
 
-  const [feedbacks, setFeedbacks]     = useState<LectureFeedback[]>([])
+  const [feedbacks, setFeedbacks]       = useState<LectureFeedback[]>([])
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [expanded, setExpanded]       = useState<string | null>(null)   // lecture_name
-  const [filterDay, setFilterDay]     = useState<string>('all')
+  const [interns, setInterns]           = useState<Intern[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [expanded, setExpanded]         = useState<string | null>(null)
+  const [filterDay, setFilterDay]       = useState<string>('all')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
-    if (status === 'authenticated' && role === 'Intern') router.replace('/schedule')
+    if (status === 'authenticated' && role !== 'CO1') router.replace('/schedule')
   }, [status, role, router])
 
   useEffect(() => {
-    if (status !== 'authenticated' || role === 'Intern') return
+    if (status !== 'authenticated' || role !== 'CO1') return
     Promise.all([
       fetch('/api/feedbacks').then(r => r.json()),
       fetch('/api/schedule').then(r => r.json()),
-    ]).then(([fbData, schedData]) => {
+      fetch('/api/interns').then(r => r.json()),
+      fetch('/api/settings').then(r => r.json()),
+    ]).then(([fbData, schedData, internsData, settingsData]) => {
       setFeedbacks(fbData.feedbacks ?? [])
-      setScheduleRows((schedData.rows ?? []).filter((r: ScheduleRow) => r.type === 'offline'))
+      setInterns(internsData.interns ?? [])
+      const settings = settingsData.settings
+      const jv = settings ?? { job_visible_marketing: true, job_visible_aiax: true, job_visible_biz: true }
+      setScheduleRows((schedData.rows ?? []).filter((r: ScheduleRow) => {
+        if (r.type !== 'offline') return false
+        if (r.feedback_exclude) return false
+        if (r.week_num === 2 && !settings?.week_2_visible) return false
+        if (r.job_types.includes('all')) return true
+        if (r.job_types.includes('marketing') && jv.job_visible_marketing) return true
+        if (r.job_types.includes('aiax')      && jv.job_visible_aiax)      return true
+        if (r.job_types.includes('biz')       && jv.job_visible_biz)       return true
+        return false
+      }))
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [status, role])
@@ -70,19 +90,20 @@ export default function FeedbackAdminPage() {
 
   // 강의별 집계
   const lectureMap: Record<string, { row?: ScheduleRow; feedbacks: LectureFeedback[] }> = {}
-  for (const fb of feedbacks) {
-    if (!lectureMap[fb.lecture_name]) lectureMap[fb.lecture_name] = { feedbacks: [] }
-    lectureMap[fb.lecture_name].feedbacks.push(fb)
-  }
   for (const row of scheduleRows) {
     if (!lectureMap[row.name]) lectureMap[row.name] = { feedbacks: [] }
     lectureMap[row.name].row = row
   }
+  for (const fb of feedbacks) {
+    if (!lectureMap[fb.lecture_name]) lectureMap[fb.lecture_name] = { feedbacks: [] }
+    lectureMap[fb.lecture_name].feedbacks.push(fb)
+  }
 
-  // 날짜 목록 (필터용)
+  // 날짜 목록 (필터용) — scheduleRows 기준
   const allDates = Array.from(new Set(scheduleRows.map(r => r.date_label))).sort()
 
   const filteredLectures = Object.entries(lectureMap)
+    .filter(([, v]) => v.row !== undefined)                          // schedule에 없는 강의 제외
     .filter(([, v]) => filterDay === 'all' || v.row?.date_label === filterDay)
     .sort((a, b) => {
       const aDay = a[1].row?.day_num ?? 99
@@ -92,7 +113,6 @@ export default function FeedbackAdminPage() {
     })
 
   const totalResponses = feedbacks.length
-  const totalLectures = filteredLectures.length
 
   return (
     <>
@@ -101,7 +121,7 @@ export default function FeedbackAdminPage() {
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 강의 피드백 집계</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-            오프라인 강의 {totalLectures}개 · 총 응답 {totalResponses}건
+            오프라인 강의 {filteredLectures.length}개 · 총 응답 {totalResponses}건
           </p>
         </div>
 
@@ -124,13 +144,17 @@ export default function FeedbackAdminPage() {
         {filteredLectures.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: '36px', marginBottom: '12px', opacity: 0.35 }}>📋</div>
-            아직 피드백 데이터가 없습니다
+            피드백 대상 강의가 없습니다
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {filteredLectures.map(([lectureName, { row, feedbacks: lFbs }]) => {
-              const isExp = expanded === lectureName
-              const count = lFbs.length
+              const isExp  = expanded === lectureName
+              const count  = lFbs.length
+              const total  = row ? getTargetCount(row, interns) : 0
+              const pct    = total > 0 ? count / total : 0
+              const responseColor = pct >= 1 ? '#059669' : pct >= 0.5 ? '#D97706' : count > 0 ? 'var(--primary)' : 'var(--text-muted)'
+              const responseBg    = pct >= 1 ? 'rgba(5,150,105,0.1)' : pct >= 0.5 ? 'rgba(217,119,6,0.1)' : count > 0 ? 'rgba(29,68,144,0.08)' : 'var(--bg-hover)'
 
               const avgs = Q_META.map(q => ({ ...q, score: avg(lFbs.map(f => f[q.key])) }))
               const overallAvg = avg(avgs.map(a => a.score))
@@ -170,13 +194,13 @@ export default function FeedbackAdminPage() {
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{row.teacher}</span>
                     )}
 
-                    {/* 응답 수 */}
+                    {/* 응답 N/M명 */}
                     <span style={{
-                      fontSize: '12px', fontWeight: 700, color: count > 0 ? 'var(--primary)' : 'var(--text-muted)',
-                      background: count > 0 ? 'rgba(29,68,144,0.08)' : 'var(--bg-hover)',
+                      fontSize: '12px', fontWeight: 700, color: responseColor,
+                      background: responseBg,
                       padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0,
                     }}>
-                      응답 {count}건
+                      응답 {count} / {total}명
                     </span>
 
                     {/* 종합 평균 */}
@@ -213,9 +237,7 @@ export default function FeedbackAdminPage() {
                             gap: '10px', marginBottom: '20px',
                           }}>
                             {avgs.map(a => (
-                              <div key={a.key} style={{
-                                background: '#F8F7F4', borderRadius: '8px', padding: '10px 12px',
-                              }}>
+                              <div key={a.key} style={{ background: '#F8F7F4', borderRadius: '8px', padding: '10px 12px' }}>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '5px' }}>{a.label}</div>
                                 <ScoreBar score={a.score} />
                               </div>
@@ -235,9 +257,9 @@ export default function FeedbackAdminPage() {
                           {/* 정성 답변 */}
                           {(['q7_helpful', 'q8_difficult', 'q9_improvement'] as const).map(qk => {
                             const qLabels: Record<string, string> = {
-                              q7_helpful:      '💡 가장 도움이 된 내용',
-                              q8_difficult:    '🤔 이해하기 어려웠던 내용',
-                              q9_improvement:  '🔧 개선이 필요한 점',
+                              q7_helpful:     '💡 가장 도움이 된 내용',
+                              q8_difficult:   '🤔 이해하기 어려웠던 내용',
+                              q9_improvement: '🔧 개선이 필요한 점',
                             }
                             const answers = lFbs.map(f => ({ intern: f.intern_name, text: f[qk] })).filter(a => a.text.trim())
                             if (answers.length === 0) return null

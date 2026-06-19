@@ -858,10 +858,16 @@ export default function SchedulePage() {
     }
   }, [isIntern, status, internPreviewActive, previewInternName])
 
-  // 실제 인턴 본인 피드백 로드
+  // 피드백 로드: 실제 인턴(본인) 또는 CO1 인턴 미리보기(해당 인턴 것)
   useEffect(() => {
-    if (status !== 'authenticated' || !isRealIntern) return
-    fetch('/api/feedbacks')
+    if (status !== 'authenticated') return
+    const url = isRealIntern
+      ? '/api/feedbacks'
+      : (internPreviewActive && previewInternName)
+        ? `/api/feedbacks?intern_name=${encodeURIComponent(previewInternName)}`
+        : null
+    if (!url) { setMyFeedbacks({}); return }
+    fetch(url)
       .then(r => r.json())
       .then(d => {
         const map: Record<string, LectureFeedback> = {}
@@ -870,7 +876,7 @@ export default function SchedulePage() {
       })
       .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, isRealIntern])
+  }, [status, isRealIntern, internPreviewActive, previewInternName])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -1632,7 +1638,7 @@ export default function SchedulePage() {
                     display: 'flex', flexDirection: 'column', gap: '5px',
                   }}>
                     {day.eval_label && (
-                      isRealIntern ? (
+                      effectiveIsIntern ? (
                         /* 실제 인턴: 강의별 피드백 버튼 */
                         offlineLectures.length === 0 ? (
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>
@@ -1762,6 +1768,11 @@ export default function SchedulePage() {
           lecture={feedbackTarget}
           existing={myFeedbacks[feedbackTarget.name]}
           onSubmit={async (data) => {
+            if (!isRealIntern) {
+              showToast('미리보기 모드에서는 제출할 수 없습니다')
+              setFeedbackTarget(null)
+              return
+            }
             const res = await fetch('/api/feedbacks', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

@@ -785,7 +785,7 @@ export default function SchedulePage() {
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
   const [internJob, setInternJob]         = useState<string>('')
   const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true })
-  const [week2Visible, setWeek2Visible]   = useState(true)
+  const [week2Visible, setWeek2Visible]   = useState(false)
   const [week2Variant, setWeek2Variant]   = useState<'A' | 'B'>('A')
   const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
   const [myInterviews, setMyInterviews] = useState<{ date: string; time_slot: string; booked_by: string }[]>([])

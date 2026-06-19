@@ -182,7 +182,7 @@ function CO1EvalModal({
         <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 700 }}>✍️ 강사 평가</div>
+              <div style={{ fontSize: '15px', fontWeight: 700 }}>✍️ CO1 강의평가</div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
                 {row.date_label} · <strong>{row.name}</strong> · {row.teacher !== '-' ? row.teacher : '강사 미정'}
               </div>
@@ -567,7 +567,7 @@ export default function FeedbackAdminPage() {
                             background: myC1 ? 'rgba(5,150,105,0.08)' : 'rgba(255,107,43,0.07)',
                             color: myC1 ? '#059669' : 'var(--mobi-orange)',
                           }}>
-                          {myC1 ? '✅ 평가 완료' : '✍️ 강사 평가'}
+                          {myC1 ? '✅ CO1 강의평가 완료' : '✍️ CO1 강의평가'}
                         </button>
                       </div>
                     )}

@@ -377,7 +377,7 @@ export default function DashboardPage() {
                   </th>
 
                   {/* 나머지 열 */}
-                  {(['수강체크율','미니테스트','공통테스트','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','인턴 기록 요약','최종 요약','태도평가','지각/결석'] as const).map(h => (
+                  {(['수강체크율','미니테스트','공통테스트','TEST 상위 2과목','TEST 하위 2과목','과제 제출링크','인턴 기록 요약','태도평가','지각/결석'] as const).map(h => (
                     <th key={h} style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '11.5px', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                   {canEdit && <th style={{ padding: '10px 8px', borderBottom: '2px solid var(--border)', width: '60px' }} />}
@@ -519,25 +519,7 @@ export default function DashboardPage() {
                         )}
                       </td>
 
-                      {/* 인턴 기록 요약 (기록 내용 전체 + summary 필드) */}
-                      <td style={{ padding: '12px 8px', minWidth: '200px', maxWidth: '320px', borderBottom: '1px solid var(--border)' }}>
-                        {isEditing ? (
-                          <textarea
-                            value={editData.summary ?? intern.summary ?? ''}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => setEditData(p => ({ ...p, summary: e.target.value }))}
-                            rows={3}
-                            placeholder="종합 코멘트 입력..."
-                            style={{ width: '100%', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                            {intern.summary || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 최종 요약 (공개된 경우 리더에게도 표시) */}
+                      {/* 인턴 기록 요약 — final_summary (HRBP 작성, 공개 시 리더에게도 표시) */}
                       <td style={{ padding: '12px 8px', minWidth: '200px', maxWidth: '320px', borderBottom: '1px solid var(--border)' }}>
                         {(() => {
                           const hasContent = !!intern.final_summary

@@ -417,7 +417,7 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rawRows = await readSheet('schedule!A2:U')
+  const rawRows = await readSheet('schedule!A2:V')
   const result: ScheduleRow[] = []
   rawRows.forEach((r, i) => {
     if (!r[0] || !r[7]) return // week_num, name 필수
@@ -443,7 +443,8 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       location:       r[17] || '',
       week_variant:   r[18] || '',
       eval_link:      r[19] || '',      // T열 = 강의평가 링크
-      has_practice:   r[20]?.toLowerCase() === 'y', // U열 = 실습 있었던 강의 여부
+      has_practice:      r[20]?.toLowerCase() === 'y', // U열 = 실습 있었던 강의 여부
+      feedback_exclude:  r[21]?.toLowerCase() === 'y', // V열 = 피드백 제외 여부
     })
   })
   return result

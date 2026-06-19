@@ -91,7 +91,8 @@ export interface ScheduleRow {
   location?: string          // 강의 장소 (R열)
   flow_stage?: string        // F열 교육 흐름 — '회사의 이해'|'일잘러 입문'|'직무 기초'|'직무 심화'|'시험 및 과제'
   week_variant?: string      // S열 — 'A'|'B'|'' (빈칸=모두 표시, Week 2 A/B 버전 구분)
-  has_practice?: boolean     // U열 — 실습이 있었던 강의 여부 (시트에서 직접 관리)
+  has_practice?: boolean      // U열 — 실습이 있었던 강의 여부 (시트에서 직접 관리)
+  feedback_exclude?: boolean  // V열 — 피드백 평가 제외 여부 (y = 제외, 시트에서 직접 관리)
 }
 
 /** 하루 단위 묶음 (UI 렌더링용) */

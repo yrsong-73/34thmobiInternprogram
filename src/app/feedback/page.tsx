@@ -47,6 +47,30 @@ const FORM_TYPES = ['이론 중심', '실습 중심', '이론+실습 혼합']
 const MATERIAL_OPTIONS = ['내용 충실', '예시 활용(데이터·프로젝트 등)', '디자인 우수']
 const PRACTICE_TYPES = ['실습·발표', '과제', '시험']
 
+const CO1_QUANT_FIELDS: { key: keyof CO1Feedback; label: string }[] = [
+  { key: 'form_type',          label: '강의 형태' },
+  { key: 'content_fit',        label: '목적·내용 적합성' },
+  { key: 'practical',          label: '실무 연계도' },
+  { key: 'difficulty',         label: '세션 난이도' },
+  { key: 'time_mgmt',          label: '시간 운영' },
+  { key: 'instructor_quality', label: '강의력·소통력' },
+]
+
+const CO1_QUAL_FIELDS: { key: 'opinion_content' | 'opinion_instructor' | 'opinion_qa'; label: string }[] = [
+  { key: 'opinion_content',    label: '강의 내용·구성 개선 의견' },
+  { key: 'opinion_instructor', label: '강사·전달 관련 코멘트' },
+  { key: 'opinion_qa',         label: '질문 및 소통 내용 기록' },
+]
+
+function co1Dist(fbs: CO1Feedback[], key: keyof CO1Feedback): Record<string, number> {
+  const map: Record<string, number> = {}
+  for (const fb of fbs) {
+    const v = fb[key] as string
+    if (v) map[v] = (map[v] ?? 0) + 1
+  }
+  return map
+}
+
 function PillGroup({
   options,
   value,
@@ -392,9 +416,10 @@ export default function FeedbackAdminPage() {
   const [feedbacks, setFeedbacks]           = useState<LectureFeedback[]>([])
   const [scheduleRows, setScheduleRows]     = useState<ScheduleRow[]>([])
   const [interns, setInterns]               = useState<Intern[]>([])
-  const [myCO1Feedbacks, setMyCO1Feedbacks] = useState<Record<string, CO1Feedback>>({})
-  const [co1CountMap, setCO1CountMap]       = useState<Record<string, number>>({})
-  const [loading, setLoading]               = useState(true)
+  const [myCO1Feedbacks, setMyCO1Feedbacks]   = useState<Record<string, CO1Feedback>>({})
+  const [co1CountMap, setCO1CountMap]         = useState<Record<string, number>>({})
+  const [co1AllByLecture, setCO1AllByLecture] = useState<Record<string, CO1Feedback[]>>({})
+  const [loading, setLoading]                 = useState(true)
   const [expanded, setExpanded]             = useState<string | null>(null)
   const [filterDay, setFilterDay]           = useState<string>('all')
   const [co1Target, setCO1Target]           = useState<ScheduleRow | null>(null)
@@ -416,16 +441,20 @@ export default function FeedbackAdminPage() {
       setFeedbacks(fbData.feedbacks ?? [])
       setInterns(internsData.interns ?? [])
 
-      // CO1 강사 평가: 본인 것 + 전체 건수
+      // CO1 강사 평가: 본인 것 + 전체 건수 + 강의별 전체 목록
       const allCO1: CO1Feedback[] = co1Data.feedbacks ?? []
       const co1Map: Record<string, CO1Feedback> = {}
       const countMap: Record<string, number> = {}
+      const byLecture: Record<string, CO1Feedback[]> = {}
       for (const fb of allCO1) {
         if (fb.evaluator === userName) co1Map[fb.lecture_name] = fb
         countMap[fb.lecture_name] = (countMap[fb.lecture_name] ?? 0) + 1
+        if (!byLecture[fb.lecture_name]) byLecture[fb.lecture_name] = []
+        byLecture[fb.lecture_name].push(fb)
       }
       setMyCO1Feedbacks(co1Map)
       setCO1CountMap(countMap)
+      setCO1AllByLecture(byLecture)
 
       const settings = settingsData.settings
       const jv = settings ?? { job_visible_marketing: true, job_visible_aiax: true, job_visible_biz: true }
@@ -457,18 +486,20 @@ export default function FeedbackAdminPage() {
       }),
     })
     // 로컬 state 업데이트
-    setMyCO1Feedbacks(prev => ({
-      ...prev,
-      [co1Target.name]: {
-        evaluator:       userName,
-        timestamp:       new Date().toISOString(),
-        lecture_name:    co1Target.name,
-        lecture_teacher: co1Target.teacher,
-        lecture_date:    co1Target.date_label,
-        ...form,
-        material_checks: form.material_checks.join(','),
-      },
-    }))
+    const newFb: CO1Feedback = {
+      evaluator:       userName,
+      timestamp:       new Date().toISOString(),
+      lecture_name:    co1Target.name,
+      lecture_teacher: co1Target.teacher,
+      lecture_date:    co1Target.date_label,
+      ...form,
+      material_checks: form.material_checks.join(','),
+    }
+    setMyCO1Feedbacks(prev => ({ ...prev, [co1Target.name]: newFb }))
+    setCO1AllByLecture(prev => {
+      const rest = (prev[co1Target.name] ?? []).filter(fb => fb.evaluator !== userName)
+      return { ...prev, [co1Target.name]: [...rest, newFb] }
+    })
     setCO1Target(null)
   }
 
@@ -548,6 +579,7 @@ export default function FeedbackAdminPage() {
 
               const myC1      = myCO1Feedbacks[lectureName]
               const co1Count  = co1CountMap[lectureName] ?? 0
+              const co1Fbs    = co1AllByLecture[lectureName] ?? []
 
               return (
                 <div key={lectureName} style={{
@@ -672,6 +704,90 @@ export default function FeedbackAdminPage() {
                           })}
                         </>
                       )}
+
+                      {/* CO1 강의평가 결과 */}
+                      {co1Fbs.length > 0 && (() => {
+                        const matDist: Record<string, number> = {}
+                        for (const fb of co1Fbs) {
+                          fb.material_checks.split(',').map(s => s.trim()).filter(Boolean)
+                            .forEach(m => { matDist[m] = (matDist[m] ?? 0) + 1 })
+                        }
+                        return (
+                          <div style={{ marginTop: count > 0 ? '20px' : 0, paddingTop: count > 0 ? '16px' : 0, borderTop: count > 0 ? '1px dashed #E5E3DE' : 'none' }}>
+                            {/* 헤더 */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                              <span style={{ background: '#1D4490', color: '#fff', borderRadius: '8px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }}>CO1 강의평가</span>
+                              <span style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>총 {co1Fbs.length}명 평가 완료</span>
+                            </div>
+
+                            {/* 정량 집계 */}
+                            <div style={{ background: '#F0F4FF', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px' }}>
+                              {CO1_QUANT_FIELDS.map(({ key, label }) => {
+                                const d = co1Dist(co1Fbs, key)
+                                if (Object.keys(d).length === 0) return null
+                                return (
+                                  <div key={key as string} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0', borderBottom: '1px solid #DBEAFE' }}>
+                                    <span style={{ fontSize: '11.5px', color: '#4B5563', minWidth: '120px', flexShrink: 0 }}>{label}</span>
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                      {Object.entries(d).map(([val, cnt]) => (
+                                        <span key={val} style={{ background: '#fff', border: '1px solid #BFDBFE', color: '#1D4490', padding: '1px 8px', borderRadius: '12px', fontSize: '11.5px', fontWeight: 600 }}>
+                                          {val} ×{cnt}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                              {Object.keys(matDist).length > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>
+                                  <span style={{ fontSize: '11.5px', color: '#4B5563', minWidth: '120px', flexShrink: 0 }}>교안</span>
+                                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                    {Object.entries(matDist).map(([val, cnt]) => (
+                                      <span key={val} style={{ background: '#fff', border: '1px solid #BFDBFE', color: '#1D4490', padding: '1px 8px', borderRadius: '12px', fontSize: '11.5px', fontWeight: 600 }}>
+                                        {val} ×{cnt}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 정성 의견 */}
+                            {CO1_QUAL_FIELDS.map(({ key, label }) => {
+                              const answers = co1Fbs.map(fb => ({ evaluator: fb.evaluator, text: fb[key] })).filter(a => a.text?.trim())
+                              if (answers.length === 0) return null
+                              return (
+                                <div key={key} style={{ marginBottom: '10px' }}>
+                                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>{label}</div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                    {answers.map((a, i) => (
+                                      <div key={i} style={{ background: '#F0F4FF', border: '1px solid #DBEAFE', borderRadius: '8px', padding: '8px 12px' }}>
+                                        <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 700 }}>{a.evaluator}&nbsp;·&nbsp;</span>
+                                        <span style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{a.text}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )
+                            })}
+
+                            {/* 실습 메모 */}
+                            {co1Fbs.some(fb => fb.practice_memo?.trim()) && (
+                              <div>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>실습 메모</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                  {co1Fbs.filter(fb => fb.practice_memo?.trim()).map((fb, i) => (
+                                    <div key={i} style={{ background: '#FAF5FF', border: '1px solid #DDD6FE', borderRadius: '8px', padding: '8px 12px' }}>
+                                      <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: 700 }}>{fb.evaluator}&nbsp;·&nbsp;</span>
+                                      <span style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{fb.practice_memo}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>

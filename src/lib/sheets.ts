@@ -7,7 +7,7 @@
  */
 
 import { google } from 'googleapis'
-import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment, LectureFeedback } from '@/types'
+import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment, LectureFeedback, CO1Feedback } from '@/types'
 
 // ──────────────────────────────────────────────
 // 인증 초기화
@@ -697,5 +697,75 @@ export async function upsertFeedback(data: Omit<LectureFeedback, 'rowIndex'>): P
     await updateRow('feedbacks', idx + 2, values)
   } else {
     await appendRow('feedbacks', values)
+  }
+}
+
+// ──────────────────────────────────────────────
+// CO1 강사 평가 (co1_feedbacks 시트)
+// ──────────────────────────────────────────────
+
+async function ensureCO1FeedbacksSheet(): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'co1_feedbacks')
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: 'co1_feedbacks' } } }] },
+    })
+    await appendRow('co1_feedbacks', [
+      'timestamp','evaluator','lecture_name','lecture_teacher','lecture_date',
+      'form_type','content_fit','practical','difficulty','time_mgmt',
+      'instructor_quality','material_checks',
+      'opinion_content','opinion_instructor','opinion_qa',
+      'practice_type','practice_memo',
+    ])
+  }
+}
+
+export async function getCO1Feedbacks(evaluator?: string): Promise<CO1Feedback[]> {
+  try {
+    const rows = await readSheet('co1_feedbacks!A2:Q')
+    return rows
+      .map((r, i) => ({
+        rowIndex:            i + 2,
+        timestamp:           r[0]  || '',
+        evaluator:           r[1]  || '',
+        lecture_name:        r[2]  || '',
+        lecture_teacher:     r[3]  || '',
+        lecture_date:        r[4]  || '',
+        form_type:           r[5]  || '',
+        content_fit:         r[6]  || '',
+        practical:           r[7]  || '',
+        difficulty:          r[8]  || '',
+        time_mgmt:           r[9]  || '',
+        instructor_quality:  r[10] || '',
+        material_checks:     r[11] || '',
+        opinion_content:     r[12] || '',
+        opinion_instructor:  r[13] || '',
+        opinion_qa:          r[14] || '',
+        practice_type:       r[15] || '',
+        practice_memo:       r[16] || '',
+      }))
+      .filter(fb => fb.evaluator && fb.lecture_name)
+      .filter(fb => !evaluator || fb.evaluator === evaluator)
+  } catch { return [] }
+}
+
+export async function upsertCO1Feedback(data: Omit<CO1Feedback, 'rowIndex'>): Promise<void> {
+  await ensureCO1FeedbacksSheet()
+  const rows = await readSheet('co1_feedbacks!A2:Q')
+  const idx = rows.findIndex(r => r[1] === data.evaluator && r[2] === data.lecture_name)
+  const values: (string | number)[] = [
+    data.timestamp, data.evaluator, data.lecture_name, data.lecture_teacher, data.lecture_date,
+    data.form_type, data.content_fit, data.practical, data.difficulty, data.time_mgmt,
+    data.instructor_quality, data.material_checks,
+    data.opinion_content, data.opinion_instructor, data.opinion_qa,
+    data.practice_type ?? '', data.practice_memo ?? '',
+  ]
+  if (idx >= 0) {
+    await updateRow('co1_feedbacks', idx + 2, values)
+  } else {
+    await appendRow('co1_feedbacks', values)
   }
 }

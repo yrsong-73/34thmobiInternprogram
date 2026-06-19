@@ -190,6 +190,36 @@ export interface LectureFeedback {
 }
 
 // ──────────────────────────────────────────────
+// CO1 강사 평가 (co1_feedbacks 시트)
+//
+// 컬럼: A=timestamp  B=evaluator  C=lecture_name  D=lecture_teacher  E=lecture_date
+//       F=form_type  G=content_fit  H=practical  I=difficulty  J=time_mgmt
+//       K=instructor_quality  L=material_checks  M=opinion_content
+//       N=opinion_instructor  O=opinion_qa  P=practice_type  Q=practice_memo
+// ──────────────────────────────────────────────
+
+export interface CO1Feedback {
+  rowIndex?: number
+  timestamp: string
+  evaluator: string           // 평가자 (로그인 이름)
+  lecture_name: string
+  lecture_teacher: string
+  lecture_date: string
+  form_type: string           // 이론 중심 | 실습 중심 | 이론+실습 혼합
+  content_fit: string         // 명확·부합 | 보통 | 미흡
+  practical: string           // 높음 | 보통 | 낮음
+  difficulty: string          // 쉬움 | 적당 | 어려움
+  time_mgmt: string           // 적정 | 짧음 | 김
+  instructor_quality: string  // 잘함 | 보통 | 미흡
+  material_checks: string     // 콤마 구분: 내용 충실,예시 활용,디자인 우수
+  opinion_content: string     // 강의 내용·구성 개선 의견
+  opinion_instructor: string  // 강사·전달 관련 코멘트
+  opinion_qa: string          // 질문 및 소통 내용 기록
+  practice_type?: string      // 실습 형태 (실습/혼합일 때만)
+  practice_memo?: string      // 실습 관련 메모
+}
+
+// ──────────────────────────────────────────────
 // 공지 게시판
 // ──────────────────────────────────────────────
 

@@ -47,37 +47,76 @@ const FORM_TYPES = ['이론 중심', '실습 중심', '이론+실습 혼합']
 const MATERIAL_OPTIONS = ['내용 충실', '예시 활용(데이터·프로젝트 등)', '디자인 우수']
 const PRACTICE_TYPES = ['실습·발표', '과제', '시험']
 
-function Radio({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+function PillGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; sub?: string }[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const selected = options.find(o => o.value === value)
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: checked ? 'var(--mobi-dark)' : 'var(--text-primary)' }}>
-      <span style={{
-        width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
-        border: `2px solid ${checked ? 'var(--mobi-dark)' : 'var(--border-strong)'}`,
-        background: checked ? 'var(--mobi-dark)' : '#fff',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
-      }}>
-        {checked && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />}
-      </span>
-      {label}
-    </label>
+    <div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {options.map(opt => {
+          const isSelected = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              style={{
+                padding: '7px 18px', borderRadius: '20px', fontSize: '13px',
+                fontWeight: isSelected ? 700 : 500,
+                border: isSelected ? '2px solid var(--mobi-dark)' : '1.5px solid #D1CDC5',
+                background: isSelected ? 'var(--mobi-dark)' : '#fff',
+                color: isSelected ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s', lineHeight: 1.4,
+              }}
+            >
+              {opt.value}
+            </button>
+          )
+        })}
+      </div>
+      {selected?.sub && (
+        <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#6B7280', paddingLeft: '2px', fontStyle: 'italic' }}>
+          ↳ {selected.sub}
+        </div>
+      )}
+    </div>
   )
 }
 
 function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: checked ? 'var(--mobi-dark)' : 'var(--text-primary)' }} onClick={onChange}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }} onClick={onChange}>
       <span style={{
-        width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-        border: `2px solid ${checked ? 'var(--mobi-dark)' : 'var(--border-strong)'}`,
+        width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0,
+        border: `2px solid ${checked ? 'var(--mobi-dark)' : '#C5C0B8'}`,
         background: checked ? 'var(--mobi-dark)' : '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s', fontSize: '10px', color: '#fff',
+        transition: 'all 0.12s', fontSize: '11px', color: '#fff',
       }}>
         {checked && '✓'}
       </span>
-      {label}
+      <span style={{ color: checked ? 'var(--mobi-dark)' : 'var(--text-primary)' }}>{label}</span>
     </label>
+  )
+}
+
+function SecHeader({ letter, title, color }: { letter: string; title: string; color: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+      <span style={{
+        width: '22px', height: '22px', borderRadius: '50%', background: color, color: '#fff',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '11.5px', fontWeight: 800, flexShrink: 0,
+      }}>{letter}</span>
+      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</span>
+    </div>
   )
 }
 
@@ -141,125 +180,120 @@ function CO1EvalModal({
     setSaving(false)
   }
 
-  const sectionStyle: React.CSSProperties = {
-    marginBottom: '20px',
-  }
-  const sectionLabel: React.CSSProperties = {
-    fontSize: '12px', fontWeight: 700, color: '#1D4490',
-    marginBottom: '10px', paddingBottom: '6px',
-    borderBottom: '1px solid #DBEAFE',
-  }
-  const radioGroup = (key: keyof CO1EvalFormState, options: { value: string; sub?: string }[]) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {options.map(opt => (
-        <div key={opt.value}>
-          <Radio
-            label={opt.value}
-            checked={form[key] === opt.value}
-            onChange={() => set(key, opt.value)}
-          />
-          {opt.sub && form[key] === opt.value && (
-            <div style={{ marginLeft: '22px', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>
-          )}
-        </div>
-      ))}
+  const qItem = (label: string, children: React.ReactNode) => (
+    <div style={{ marginBottom: '14px' }}>
+      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>{label}</div>
+      {children}
     </div>
   )
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999, padding: '16px',
     }} onClick={onClose}>
       <div style={{
-        background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '560px',
-        maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        background: '#F8F7F4', borderRadius: '18px', width: '100%', maxWidth: '580px',
+        maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.28)',
       }} onClick={e => e.stopPropagation()}>
 
         {/* 모달 헤더 */}
-        <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #E5E3DE', flexShrink: 0, background: '#fff', borderRadius: '18px 18px 0 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 700 }}>✍️ CO1 강의평가</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                {row.date_label} · <strong>{row.name}</strong> · {row.teacher !== '-' ? row.teacher : '강사 미정'}
+              <div style={{ fontSize: '15.5px', fontWeight: 800, letterSpacing: '-0.3px' }}>✍️ CO1 강의평가</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ background: '#EEF2FF', color: '#4338CA', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>{row.date_label}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{row.name}</span>
+                {row.teacher !== '-' && <span style={{ color: 'var(--text-muted)' }}>· {row.teacher}</span>}
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9CA3AF', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>✕</button>
           </div>
         </div>
 
         {/* 폼 바디 — 스크롤 */}
-        <div style={{ padding: '18px 22px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-          {/* B. 강의 내용 */}
-          <div style={sectionStyle}>
-            <div style={sectionLabel}>B. 강의 내용</div>
+          {/* A. 강의 내용 */}
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '18px 20px', border: '1px solid #DBEAFE' }}>
+            <SecHeader letter="A" title="강의 내용" color="#1D4490" />
 
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>강의 형태</div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {FORM_TYPES.map(v => (
-                  <Radio key={v} label={v} checked={form.form_type === v} onChange={() => set('form_type', v)} />
-                ))}
-              </div>
-            </div>
+            {qItem('강의 형태',
+              <PillGroup
+                options={FORM_TYPES.map(v => ({ value: v }))}
+                value={form.form_type}
+                onChange={v => set('form_type', v)}
+              />
+            )}
 
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>목적·내용 적합성</div>
-              {radioGroup('content_fit', [
-                { value: '명확·부합', sub: '목적이 명확하고 내용이 목적에 잘 부합' },
-                { value: '보통',     sub: '목적은 어느 정도 전달됐으나 불필요한 내용 일부 포함' },
-                { value: '미흡',     sub: '목적이 불명확하거나 내용이 목적과 동떨어짐' },
-              ])}
-            </div>
+            {qItem('목적·내용 적합성',
+              <PillGroup
+                options={[
+                  { value: '명확·부합', sub: '목적이 명확하고 내용이 목적에 잘 부합' },
+                  { value: '보통',     sub: '목적은 어느 정도 전달됐으나 불필요한 내용 일부 포함' },
+                  { value: '미흡',     sub: '목적이 불명확하거나 내용이 목적과 동떨어짐' },
+                ]}
+                value={form.content_fit}
+                onChange={v => set('content_fit', v)}
+              />
+            )}
 
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>실무 연계도</div>
-              {radioGroup('practical', [
-                { value: '높음', sub: '실무 연계가 매우 높고 바로 활용 가능' },
-                { value: '보통', sub: '실무와 연결되나 바로 적용은 어려움' },
-                { value: '낮음', sub: '실무 연결이 어렵고 이론/형식 위주' },
-              ])}
-            </div>
+            {qItem('실무 연계도',
+              <PillGroup
+                options={[
+                  { value: '높음', sub: '실무 연계가 매우 높고 바로 활용 가능' },
+                  { value: '보통', sub: '실무와 연결되나 바로 적용은 어려움' },
+                  { value: '낮음', sub: '실무 연결이 어렵고 이론/형식 위주' },
+                ]}
+                value={form.practical}
+                onChange={v => set('practical', v)}
+              />
+            )}
 
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>세션 난이도</div>
-              {radioGroup('difficulty', [
-                { value: '쉬움',   sub: '대부분 무리 없이 따라옴' },
-                { value: '적당',   sub: '약간의 고민·질문이 생기나 해결 가능' },
-                { value: '어려움', sub: '절반 이상이 따라오기 어려움' },
-              ])}
-            </div>
+            {qItem('세션 난이도',
+              <PillGroup
+                options={[
+                  { value: '쉬움',   sub: '대부분 무리 없이 따라옴' },
+                  { value: '적당',   sub: '약간의 고민·질문이 생기나 해결 가능' },
+                  { value: '어려움', sub: '절반 이상이 따라오기 어려움' },
+                ]}
+                value={form.difficulty}
+                onChange={v => set('difficulty', v)}
+              />
+            )}
 
             <div>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>시간 운영</div>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {['적정', '짧음', '김'].map(v => (
-                  <Radio key={v} label={v} checked={form.time_mgmt === v} onChange={() => set('time_mgmt', v)} />
-                ))}
-              </div>
+              <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>시간 운영</div>
+              <PillGroup
+                options={[{ value: '적정' }, { value: '짧음' }, { value: '김' }]}
+                value={form.time_mgmt}
+                onChange={v => set('time_mgmt', v)}
+              />
             </div>
           </div>
 
-          {/* C. 강사 */}
-          <div style={sectionStyle}>
-            <div style={sectionLabel}>C. 강사</div>
+          {/* B. 강사 */}
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '18px 20px', border: '1px solid #E0E7FF' }}>
+            <SecHeader letter="B" title="강사" color="#4F46E5" />
 
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>강의력·소통력</div>
-              {radioGroup('instructor_quality', [
-                { value: '잘함', sub: '핵심을 명확히 전달하고 참여·소통을 잘 이끎' },
-                { value: '보통', sub: '전달은 무난하나 소통은 질의응답 중심/다소 일방적' },
-                { value: '미흡', sub: '핵심 전달이 약하고 소통이 거의 없음' },
-              ])}
-            </div>
+            {qItem('강의력·소통력',
+              <PillGroup
+                options={[
+                  { value: '잘함', sub: '핵심을 명확히 전달하고 참여·소통을 잘 이끎' },
+                  { value: '보통', sub: '전달은 무난하나 소통은 질의응답 중심/다소 일방적' },
+                  { value: '미흡', sub: '핵심 전달이 약하고 소통이 거의 없음' },
+                ]}
+                value={form.instructor_quality}
+                onChange={v => set('instructor_quality', v)}
+              />
+            )}
 
             <div>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>교안 (복수 선택)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>교안 (복수 선택)</div>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                 {MATERIAL_OPTIONS.map(opt => (
                   <Checkbox
                     key={opt}
@@ -272,49 +306,53 @@ function CO1EvalModal({
             </div>
           </div>
 
-          {/* D. 정성 의견 */}
-          <div style={sectionStyle}>
-            <div style={sectionLabel}>D. ★ 정성 의견</div>
+          {/* C. 정성 의견 */}
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '18px 20px', border: '1px solid #FDE68A' }}>
+            <SecHeader letter="C" title="정성 의견" color="#D97706" />
             {[
-              { key: 'opinion_content'    as const, label: '강의 내용·구성 개선 의견' },
-              { key: 'opinion_instructor' as const, label: '강사·전달 관련 코멘트' },
-              { key: 'opinion_qa'         as const, label: '질문 및 소통 내용 기록' },
-            ].map(({ key, label }) => (
+              { key: 'opinion_content'    as const, label: '강의 내용·구성 개선 의견', placeholder: '강의 내용, 구성, 흐름에 대한 개선 의견을 자유롭게 작성해주세요.' },
+              { key: 'opinion_instructor' as const, label: '강사·전달 관련 코멘트',   placeholder: '강사의 전달력, 소통 방식, 태도 등에 대해 작성해주세요.' },
+              { key: 'opinion_qa'         as const, label: '질문 및 소통 내용 기록',  placeholder: '강의 중 오간 주요 질문·답변이나 특이사항을 기록해주세요.' },
+            ].map(({ key, label, placeholder }) => (
               <div key={key} style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>{label}</div>
+                <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>{label}</div>
                 <textarea
                   value={form[key]}
                   onChange={e => set(key, e.target.value)}
                   rows={3}
-                  placeholder="내용을 입력하세요..."
-                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' as const, lineHeight: 1.65 }}
+                  placeholder={placeholder}
+                  style={{
+                    width: '100%', border: '1px solid #FCD34D', borderRadius: '10px',
+                    padding: '9px 12px', fontSize: '13px', fontFamily: 'inherit',
+                    resize: 'vertical', boxSizing: 'border-box' as const, lineHeight: 1.7,
+                    background: '#FFFDF5', outline: 'none',
+                  }}
                 />
               </div>
             ))}
           </div>
 
-          {/* E. 실습 (조건부) */}
+          {/* 실습 (조건부) */}
           {hasPractice && (
-            <div style={sectionStyle}>
-              <div style={{ ...sectionLabel, color: '#6D28D9', borderColor: '#EDE9FE' }}>E. 실습</div>
+            <div style={{ background: '#fff', borderRadius: '14px', padding: '18px 20px', border: '1px solid #DDD6FE' }}>
+              <SecHeader letter="+" title="실습" color="#7C3AED" />
 
-              <div style={{ marginBottom: '14px' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>실습 형태</div>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  {PRACTICE_TYPES.map(v => (
-                    <Radio key={v} label={v} checked={form.practice_type === v} onChange={() => set('practice_type', v)} />
-                  ))}
-                </div>
-              </div>
+              {qItem('실습 형태',
+                <PillGroup
+                  options={PRACTICE_TYPES.map(v => ({ value: v }))}
+                  value={form.practice_type}
+                  onChange={v => set('practice_type', v)}
+                />
+              )}
 
               <div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>실습 관련 메모</div>
+                <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>실습 관련 메모</div>
                 <textarea
                   value={form.practice_memo}
                   onChange={e => set('practice_memo', e.target.value)}
                   rows={2}
                   placeholder="실습 진행 상황, 특이사항 등..."
-                  style={{ width: '100%', border: '1px solid #DDD6FE', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' as const }}
+                  style={{ width: '100%', border: '1px solid #DDD6FE', borderRadius: '10px', padding: '9px 12px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' as const, background: '#FAF5FF', lineHeight: 1.7, outline: 'none' }}
                 />
               </div>
             </div>
@@ -322,14 +360,19 @@ function CO1EvalModal({
         </div>
 
         {/* 하단 버튼 */}
-        <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'flex-end', background: '#FAFAF8' }}>
-          <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <div style={{ padding: '14px 20px', borderTop: '1px solid #E5E3DE', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'flex-end', background: '#fff', borderRadius: '0 0 18px 18px' }}>
+          {!isValid && (
+            <span style={{ fontSize: '12px', color: '#9CA3AF', alignSelf: 'center', marginRight: 'auto' }}>
+              A·B 섹션 필수 항목을 모두 선택해주세요
+            </span>
+          )}
+          <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: '10px', border: '1px solid #D1CDC5', background: '#fff', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             취소
           </button>
           <button
             onClick={handleSave}
             disabled={!isValid || saving}
-            style={{ padding: '9px 24px', borderRadius: '8px', border: 'none', background: isValid ? 'var(--mobi-orange)' : '#D1CFC8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: isValid && !saving ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}>
+            style={{ padding: '9px 24px', borderRadius: '10px', border: 'none', background: isValid ? 'var(--mobi-orange)' : '#D1CFC8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: isValid && !saving ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}>
             {saving ? '저장 중...' : (existing ? '수정 저장' : '제출')}
           </button>
         </div>
@@ -555,7 +598,7 @@ export default function FeedbackAdminPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                         {co1Count > 0 && (
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                            강사평가 {co1Count}건
+                            CO1 {co1Count}명 평가
                           </span>
                         )}
                         <button
@@ -567,7 +610,7 @@ export default function FeedbackAdminPage() {
                             background: myC1 ? 'rgba(5,150,105,0.08)' : 'rgba(255,107,43,0.07)',
                             color: myC1 ? '#059669' : 'var(--mobi-orange)',
                           }}>
-                          {myC1 ? '✅ CO1 강의평가 완료' : '✍️ CO1 강의평가'}
+                          {myC1 ? '✅ 내 평가 완료' : '✍️ CO1 강의평가'}
                         </button>
                       </div>
                     )}

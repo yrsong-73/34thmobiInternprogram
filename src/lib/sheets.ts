@@ -7,7 +7,7 @@
  */
 
 import { google } from 'googleapis'
-import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment } from '@/types'
+import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment, LectureFeedback } from '@/types'
 
 // ──────────────────────────────────────────────
 // 인증 초기화
@@ -417,7 +417,7 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rawRows = await readSheet('schedule!A2:T')
+  const rawRows = await readSheet('schedule!A2:U')
   const result: ScheduleRow[] = []
   rawRows.forEach((r, i) => {
     if (!r[0] || !r[7]) return // week_num, name 필수
@@ -443,6 +443,7 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       location:       r[17] || '',
       week_variant:   r[18] || '',
       eval_link:      r[19] || '',      // T열 = 강의평가 링크
+      has_practice:   r[20]?.toLowerCase() === 'y', // U열 = 실습 있었던 강의 여부
     })
   })
   return result
@@ -615,4 +616,81 @@ export async function deleteInterview(rowIndex: number): Promise<void> {
       requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }],
     },
   })
+}
+
+// ──────────────────────────────────────────────
+// 강의 피드백 (feedbacks 시트)
+//
+// ※ Google Sheets에 'feedbacks' 시트를 만들고
+//    1행에 헤더를 추가해주세요:
+//    timestamp | intern_name | lecture_name | lecture_date |
+//    q1 | q2 | q3 | q4 | q5 | q6 | q7 | q8 | q9
+// ──────────────────────────────────────────────
+
+async function ensureFeedbacksSheet(): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'feedbacks')
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: 'feedbacks' } } }] },
+    })
+    await appendRow('feedbacks', [
+      'timestamp','intern_name','lecture_name','lecture_date',
+      'q1_satisfaction','q2_structure','q3_depth','q4_explanation','q5_practical','q6_practice',
+      'q7_helpful','q8_difficult','q9_improvement',
+    ])
+  }
+}
+
+export async function getFeedbacks(internName?: string): Promise<LectureFeedback[]> {
+  try {
+    const rows = await readSheet('feedbacks!A2:M')
+    return rows
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        timestamp:        r[0]  || '',
+        intern_name:      r[1]  || '',
+        lecture_name:     r[2]  || '',
+        lecture_date:     r[3]  || '',
+        q1_satisfaction:  Number(r[4])  || 0,
+        q2_structure:     Number(r[5])  || 0,
+        q3_depth:         Number(r[6])  || 0,
+        q4_explanation:   Number(r[7])  || 0,
+        q5_practical:     Number(r[8])  || 0,
+        q6_practice:      r[9]  ? Number(r[9])  : undefined,
+        q7_helpful:       r[10] || '',
+        q8_difficult:     r[11] || '',
+        q9_improvement:   r[12] || '',
+      }))
+      .filter(fb => fb.intern_name && fb.lecture_name)
+      .filter(fb => !internName || fb.intern_name === internName)
+  } catch { return [] }
+}
+
+export async function upsertFeedback(data: Omit<LectureFeedback, 'rowIndex'>): Promise<void> {
+  await ensureFeedbacksSheet()
+  const rows = await readSheet('feedbacks!A2:M')
+  const idx = rows.findIndex(r => r[1] === data.intern_name && r[2] === data.lecture_name)
+  const values: (string | number)[] = [
+    data.timestamp,
+    data.intern_name,
+    data.lecture_name,
+    data.lecture_date,
+    data.q1_satisfaction,
+    data.q2_structure,
+    data.q3_depth,
+    data.q4_explanation,
+    data.q5_practical,
+    data.q6_practice ?? '',
+    data.q7_helpful,
+    data.q8_difficult,
+    data.q9_improvement,
+  ]
+  if (idx >= 0) {
+    await updateRow('feedbacks', idx + 2, values)
+  } else {
+    await appendRow('feedbacks', values)
+  }
 }

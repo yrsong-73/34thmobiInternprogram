@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import Nav from '@/components/Nav'
 import { usePreview } from '@/context/PreviewContext'
-import type { ScheduleRow, DayGroup, LectureType } from '@/types'
+import type { ScheduleRow, DayGroup, LectureType, LectureFeedback } from '@/types'
 
 const TYPE_LABEL: Record<LectureType, string> = {
   online:  '온라인',
@@ -546,6 +546,223 @@ function SubmitTaskModal({
   )
 }
 
+// ─── FeedbackModal (Intern용 강의 피드백) ────────────────────────────────────
+const Q_LABELS = [
+  { key: 'q1', label: '전반적으로 강의에 만족하셨나요?' },
+  { key: 'q2', label: '교육 구성과 흐름이 적절했나요?' },
+  { key: 'q3', label: '내용의 깊이가 적절했나요?' },
+  { key: 'q4', label: '강사의 설명과 예시가 이해에 도움됐나요?' },
+  { key: 'q5', label: '실무에 활용할 수 있는 내용이었나요?' },
+]
+const SCORE_LABELS: Record<number, string> = { 1: '매우 아니오', 2: '아니오', 3: '보통', 4: '예', 5: '매우 예' }
+
+function FeedbackModal({
+  lecture,
+  existing,
+  onSubmit,
+  onClose,
+}: {
+  lecture: ScheduleRow
+  existing?: LectureFeedback
+  onSubmit: (data: Omit<LectureFeedback, 'rowIndex' | 'timestamp' | 'intern_name'>) => Promise<void>
+  onClose: () => void
+}) {
+  const [scores, setScores] = useState<Record<string, number>>({
+    q1: existing?.q1_satisfaction ?? 0,
+    q2: existing?.q2_structure    ?? 0,
+    q3: existing?.q3_depth        ?? 0,
+    q4: existing?.q4_explanation  ?? 0,
+    q5: existing?.q5_practical    ?? 0,
+    q6: existing?.q6_practice     ?? 0,
+  })
+  const [texts, setTexts] = useState({
+    q7: existing?.q7_helpful     ?? '',
+    q8: existing?.q8_difficult   ?? '',
+    q9: existing?.q9_improvement ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit() {
+    if (scores.q1 === 0 || scores.q2 === 0 || scores.q3 === 0 || scores.q4 === 0 || scores.q5 === 0) {
+      showToast('⚠️ Q1~Q5는 모두 답해주세요')
+      return
+    }
+    setSaving(true)
+    await onSubmit({
+      lecture_name:    lecture.name,
+      lecture_date:    lecture.date_label,
+      q1_satisfaction: scores.q1,
+      q2_structure:    scores.q2,
+      q3_depth:        scores.q3,
+      q4_explanation:  scores.q4,
+      q5_practical:    scores.q5,
+      q6_practice:     scores.q6 > 0 ? scores.q6 : undefined,
+      q7_helpful:      texts.q7,
+      q8_difficult:    texts.q8,
+      q9_improvement:  texts.q9,
+    })
+    setSaving(false)
+  }
+
+  const q6Label = lecture.has_practice
+    ? '실습이 내용 이해에 도움이 됐나요?'
+    : '실습이 필요했나요?'
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+      padding: '16px',
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{
+        background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '560px',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.22)',
+        maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* 헤더 */}
+        <div style={{
+          padding: '20px 24px 16px', borderBottom: '1px solid var(--border)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0,
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '20px', display: 'inline-block', marginBottom: '6px' }}>
+              📝 강의 피드백
+            </div>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+              {lecture.name}
+            </h2>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
+              {lecture.date_label} {lecture.time && `· ${lecture.time}`} {lecture.teacher !== '-' && `· ${lecture.teacher}`}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 0 0 12px', flexShrink: 0 }}>✕</button>
+        </div>
+
+        {/* 본문 (스크롤 가능) */}
+        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Q1~Q5 정량 */}
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              정량 평가 (1 = 매우 아니오 · 5 = 매우 예)
+            </div>
+            {Q_LABELS.map(({ key, label }) => (
+              <div key={key} style={{ marginBottom: '14px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  {label}
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setScores(p => ({ ...p, [key]: n }))}
+                      title={SCORE_LABELS[n]}
+                      style={{
+                        width: '40px', height: '40px', borderRadius: '8px', border: '1.5px solid',
+                        fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        transition: 'all 0.1s',
+                        borderColor: scores[key] === n ? '#059669' : 'var(--border)',
+                        background: scores[key] === n ? '#059669' : '#fff',
+                        color: scores[key] === n ? '#fff' : scores[key] > 0 && scores[key] < n ? 'var(--text-muted)' : 'var(--text-primary)',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  {scores[key] > 0 && (
+                    <span style={{ alignSelf: 'center', fontSize: '11.5px', color: '#059669', fontWeight: 600, marginLeft: '4px' }}>
+                      {SCORE_LABELS[scores[key]]}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Q6 실습 */}
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                {q6Label} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)' }}>(선택)</span>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setScores(p => ({ ...p, q6: p.q6 === n ? 0 : n }))}
+                    title={SCORE_LABELS[n]}
+                    style={{
+                      width: '40px', height: '40px', borderRadius: '8px', border: '1.5px solid',
+                      fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      transition: 'all 0.1s',
+                      borderColor: scores.q6 === n ? '#3B82F6' : 'var(--border)',
+                      background: scores.q6 === n ? '#3B82F6' : '#fff',
+                      color: scores.q6 === n ? '#fff' : 'var(--text-primary)',
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+                {scores.q6 > 0 && (
+                  <span style={{ alignSelf: 'center', fontSize: '11.5px', color: '#3B82F6', fontWeight: 600, marginLeft: '4px' }}>
+                    {SCORE_LABELS[scores.q6]}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Q7~Q9 정성 */}
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              정성 평가 <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(선택 사항)</span>
+            </div>
+            {([
+              { key: 'q7' as const, label: '가장 도움이 되었던 내용', placeholder: '예: 실제 캠페인 사례 분석이 인상적이었습니다' },
+              { key: 'q8' as const, label: '이해하기 어려웠던 내용', placeholder: '예: GA4 데이터 해석 방법이 생소했습니다' },
+              { key: 'q9' as const, label: '불필요하거나 개선이 필요한 점', placeholder: '예: 이론 설명 시간을 줄이고 실습을 늘렸으면 좋겠습니다' },
+            ] as const).map(({ key, label, placeholder }) => (
+              <div key={key} style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  {label}
+                </label>
+                <textarea
+                  value={texts[key]}
+                  onChange={e => setTexts(p => ({ ...p, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  rows={2}
+                  style={{
+                    width: '100%', border: '1px solid var(--border)', borderRadius: '8px',
+                    padding: '8px 12px', fontSize: '13px', fontFamily: 'inherit',
+                    resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6,
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 제출 버튼 */}
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            style={{
+              width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+              background: '#059669', color: '#fff', fontSize: '14px', fontWeight: 700,
+              cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.7 : 1,
+              transition: 'opacity 0.15s',
+            }}
+          >
+            {saving ? '제출 중...' : (existing ? '✏️ 수정하기' : '✅ 제출하기')}
+          </button>
+          <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+            이미 제출한 경우 다시 제출하면 수정됩니다
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { data: session, status } = useSession()
@@ -572,6 +789,8 @@ export default function SchedulePage() {
   const [week2Variant, setWeek2Variant]   = useState<'A' | 'B'>('A')
   const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
   const [myInterviews, setMyInterviews] = useState<{ date: string; time_slot: string; booked_by: string }[]>([])
+  const [myFeedbacks, setMyFeedbacks] = useState<Record<string, LectureFeedback>>({}) // key: lecture_name
+  const [feedbackTarget, setFeedbackTarget] = useState<ScheduleRow | null>(null)
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
@@ -638,6 +857,20 @@ export default function SchedulePage() {
         .catch(() => {})
     }
   }, [isIntern, status, internPreviewActive, previewInternName])
+
+  // 실제 인턴 본인 피드백 로드
+  useEffect(() => {
+    if (status !== 'authenticated' || !isRealIntern) return
+    fetch('/api/feedbacks')
+      .then(r => r.json())
+      .then(d => {
+        const map: Record<string, LectureFeedback> = {}
+        for (const fb of (d.feedbacks ?? [])) map[fb.lecture_name] = fb
+        setMyFeedbacks(map)
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, isRealIntern])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -1387,8 +1620,11 @@ export default function SchedulePage() {
                 강의<br/>평가
               </div>
               {dayGroups.map(day => {
-                const evalRowIndex = 10000 + day.day_num
-                const isEvalDone = effectiveCompleted.has(evalRowIndex)
+                // 이 일차의 오프라인 강의 (피드백 대상)
+                const offlineLectures = day.lectures.filter(l => l.type === 'offline')
+                const doneFeedbacks   = offlineLectures.filter(l => myFeedbacks[l.name])
+                const allFeedbackDone = offlineLectures.length > 0 && doneFeedbacks.length === offlineLectures.length
+
                 return (
                   <div key={day.day_num} style={{
                     borderLeft: '1px solid var(--border)',
@@ -1396,31 +1632,46 @@ export default function SchedulePage() {
                     display: 'flex', flexDirection: 'column', gap: '5px',
                   }}>
                     {day.eval_label && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: canCheckHere ? 'pointer' : 'default' }}>
-                        {effectiveCanCheck && (
-                          <input
-                            type="checkbox"
-                            checked={isEvalDone}
-                            onChange={e => toggleComplete(evalRowIndex, e)}
-                            disabled={!canCheckHere}
-                            title={!canCheckHere && isRealIntern ? '본인 직무 탭에서만 체크 가능' : undefined}
-                            style={{ width: '13px', height: '13px', cursor: canCheckHere ? 'pointer' : 'not-allowed', accentColor: 'var(--mobi-orange)', flexShrink: 0, opacity: canCheckHere ? 1 : 0.4 }}
-                          />
-                        )}
-                        {day.eval_link ? (
-                          <a href={day.eval_link} target="_blank" rel="noopener noreferrer" style={{
-                            fontSize: '11px', fontWeight: 700,
-                            color: isEvalDone ? '#9CA3AF' : 'var(--mobi-orange)',
-                            textDecoration: isEvalDone ? 'line-through' : 'none',
-                          }}>📝 강의평가</a>
+                      isRealIntern ? (
+                        /* 실제 인턴: 강의별 피드백 버튼 */
+                        offlineLectures.length === 0 ? (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>
+                        ) : allFeedbackDone ? (
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669' }}>✅ 강의평가 완료</span>
                         ) : (
-                          <span style={{
-                            fontSize: '11px', fontWeight: 700,
-                            color: isEvalDone ? '#9CA3AF' : 'var(--mobi-orange)',
-                            textDecoration: isEvalDone ? 'line-through' : 'none',
-                          }}>📝 강의평가</span>
-                        )}
-                      </label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {offlineLectures.map(lec => {
+                              const done = !!myFeedbacks[lec.name]
+                              return (
+                                <button
+                                  key={lec.rowIndex}
+                                  onClick={() => setFeedbackTarget(lec)}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                    padding: '4px 8px', borderRadius: '7px', cursor: 'pointer',
+                                    border: done ? '1px solid #86EFAC' : '1px solid rgba(5,150,105,0.35)',
+                                    background: done ? '#F0FDF4' : 'rgba(5,150,105,0.06)',
+                                    fontFamily: 'inherit', fontSize: '11px', fontWeight: 600,
+                                    color: done ? '#059669' : '#065F46',
+                                    textAlign: 'left',
+                                    textDecoration: done ? 'line-through' : 'none',
+                                  }}
+                                >
+                                  {done ? '✅' : '📝'}
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>
+                                    {lec.name}
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )
+                      ) : (
+                        /* CO1·Member: 응답 현황 표시 */
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          {day.eval_label}
+                        </span>
+                      )
                     )}
                   </div>
                 )
@@ -1503,6 +1754,31 @@ export default function SchedulePage() {
           existingUrl={submitTarget.rowIndex !== undefined ? submissionsMap[submitTarget.rowIndex] : undefined}
           onSubmit={(url) => handleTaskSubmit(submitTarget.rowIndex!, url)}
           onClose={() => setSubmitTarget(null)}
+        />
+      )}
+
+      {feedbackTarget && (
+        <FeedbackModal
+          lecture={feedbackTarget}
+          existing={myFeedbacks[feedbackTarget.name]}
+          onSubmit={async (data) => {
+            const res = await fetch('/api/feedbacks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+            })
+            if (res.ok) {
+              setMyFeedbacks(prev => ({
+                ...prev,
+                [feedbackTarget.name]: { ...data, intern_name: '', timestamp: '' },
+              }))
+              showToast('✅ 피드백이 저장되었습니다')
+              setFeedbackTarget(null)
+            } else {
+              showToast('❌ 저장 실패, 다시 시도해주세요')
+            }
+          }}
+          onClose={() => setFeedbackTarget(null)}
         />
       )}
     </>

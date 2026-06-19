@@ -91,6 +91,7 @@ export interface ScheduleRow {
   location?: string          // 강의 장소 (R열)
   flow_stage?: string        // F열 교육 흐름 — '회사의 이해'|'일잘러 입문'|'직무 기초'|'직무 심화'|'시험 및 과제'
   week_variant?: string      // S열 — 'A'|'B'|'' (빈칸=모두 표시, Week 2 A/B 버전 구분)
+  has_practice?: boolean     // U열 — 실습이 있었던 강의 여부 (시트에서 직접 관리)
 }
 
 /** 하루 단위 묶음 (UI 렌더링용) */
@@ -159,6 +160,30 @@ export interface AppSettings {
   job_visible_aiax: boolean
   job_visible_biz: boolean
   week_2_visible: boolean
+}
+
+// ──────────────────────────────────────────────
+// 강의 피드백 (feedbacks 시트)
+//
+// 컬럼: A=timestamp  B=intern_name  C=lecture_name  D=lecture_date
+//       E=q1  F=q2  G=q3  H=q4  I=q5  J=q6  K=q7  L=q8  M=q9
+// ──────────────────────────────────────────────
+
+export interface LectureFeedback {
+  rowIndex?: number
+  timestamp: string
+  intern_name: string
+  lecture_name: string
+  lecture_date: string
+  q1_satisfaction: number    // 전반 만족도
+  q2_structure: number       // 교육 구성·흐름
+  q3_depth: number           // 내용 깊이 적절성
+  q4_explanation: number     // 설명·예시의 이해 도움
+  q5_practical: number       // 실무 활용 가능성
+  q6_practice?: number       // 실습 (선택 — has_practice 여부에 따라 다른 의미)
+  q7_helpful: string         // 가장 도움이 된 내용
+  q8_difficult: string       // 이해하기 어려웠던 내용
+  q9_improvement: string     // 불필요하거나 개선이 필요한 점
 }
 
 // ──────────────────────────────────────────────

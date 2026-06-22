@@ -474,7 +474,7 @@ export default function FeedbackAdminPage() {
 
   async function handleCO1Save(form: CO1EvalFormState) {
     if (!co1Target) return
-    await fetch('/api/co1-feedbacks', {
+    const res = await fetch('/api/co1-feedbacks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -485,7 +485,11 @@ export default function FeedbackAdminPage() {
         material_checks: form.material_checks.join(','),
       }),
     })
-    // 로컬 state 업데이트
+    if (!res.ok) {
+      alert('저장에 실패했습니다. 다시 시도해주세요.')
+      return
+    }
+    // 저장 성공 시에만 로컬 state 업데이트
     const newFb: CO1Feedback = {
       evaluator:       userName,
       timestamp:       new Date().toISOString(),

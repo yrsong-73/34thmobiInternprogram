@@ -33,6 +33,10 @@ export async function POST(req: Request) {
     }],
   })
 
-  const summary = (message.content[0] as { type: string; text: string }).text ?? ''
+  const block = message.content[0]
+  if (!block || block.type !== 'text') {
+    return NextResponse.json({ error: 'AI 응답 형식 오류' }, { status: 500 })
+  }
+  const summary = (block as { type: string; text: string }).text ?? ''
   return NextResponse.json({ summary })
 }

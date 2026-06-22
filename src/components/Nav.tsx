@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import { usePreview } from '@/context/PreviewContext'
@@ -26,8 +27,15 @@ export default function Nav() {
   const router = useRouter()
   const { previewMode, previewInternName, internsList, setPreviewMode, setPreviewInternName, effectiveRole, isCO1Real } = usePreview()
 
-  const role     = (session?.user as any)?.role as string | undefined
+  const role     = (session?.user as any)?.role as string | null | undefined
   const userName = (session?.user as any)?.userName || session?.user?.name || ''
+
+  // 삭제된 사용자 (role === null) 감지 시 즉시 강제 로그아웃
+  useEffect(() => {
+    if (session && role === null) {
+      signOut({ callbackUrl: '/login' })
+    }
+  }, [session, role])
 
   const visibleTabs = TABS.filter(t => !t.roles || (effectiveRole && t.roles.includes(effectiveRole)))
 

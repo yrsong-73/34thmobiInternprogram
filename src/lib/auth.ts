@@ -36,42 +36,61 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       if (!user.email) return false
       const permission = await getUserRoleByEmail(user.email)
-      // 권한 없는 사용자 차단
       if (!permission) return '/login?error=unauthorized'
       return true
     },
 
     /**
-     * jwt — 로그인 직후 토큰에 역할 정보 저장
+     * jwt — 최초 로그인 + 5분마다 Sheets에서 역할 재검증
+     *
+     * 핵심 보안: 삭제된 사용자는 최대 5분 내에 접근 차단됨.
+     * token.email은 NextAuth가 OAuth에서 자동 주입하므로 항상 존재.
      */
     async jwt({ token, user }) {
-      // 최초 로그인 시에만 user 객체 존재
-      if (user?.email) {
-        const permission = await getUserRoleByEmail(user.email)
-        if (permission) {
-          token.role     = permission.role as UserRole
-          token.userName = permission.name || user.name || ''
-          token.rowIndex = permission.rowIndex
+      const now = Math.floor(Date.now() / 1000)
+      const RECHECK_SECS = 5 * 60 // 5분마다 Sheets 재조회
+
+      const email = user?.email || (token.email as string | undefined)
+      if (!email) return token
+
+      const lastCheck = (token.roleCheckedAt as number) || 0
+      const needsCheck = !!user?.email || (now - lastCheck) > RECHECK_SECS
+
+      if (needsCheck) {
+        const permission = await getUserRoleByEmail(email)
+        if (!permission) {
+          // 시트에서 삭제된 사용자 — 역할 박탈
+          token.role          = null
+          token.userName      = ''
+          token.rowIndex      = undefined
         } else {
-          token.role     = 'Intern' as UserRole
-          token.userName = user.name || ''
+          token.role          = permission.role as UserRole
+          token.userName      = permission.name || user?.name || (token.userName as string) || ''
+          token.rowIndex      = permission.rowIndex
         }
+        token.roleCheckedAt = now
       }
       return token
     },
 
     /**
      * session — 세션에 역할 + 권한 플래그 노출
+     * role이 null이면 권한 없음 (삭제된 사용자)
      */
     async session({ session, token }) {
-      const role = (token.role as UserRole) || 'Intern'
-      const policy = getPolicyByRole(role)
+      const role = (token.role as UserRole | null) ?? null
 
       ;(session.user as any).role     = role
-      ;(session.user as any).userName = token.userName
+      ;(session.user as any).userName = token.userName || ''
       ;(session.user as any).rowIndex = token.rowIndex
 
-      // 권한 플래그 (클라이언트에서 바로 사용 가능)
+      if (!role) {
+        // 삭제된 사용자 — 빈 권한 세트
+        ;(session.user as any).can = {}
+        return session
+      }
+
+      const policy = getPolicyByRole(role)
       ;(session.user as any).can = {
         schedule_view:       policy.schedule_view,
         schedule_edit_links: policy.schedule_edit_links,
@@ -92,7 +111,7 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: 'jwt',
-    maxAge:   30 * 24 * 60 * 60, // 30일
+    maxAge:   30 * 24 * 60 * 60, // 30일 (토큰 만료는 30일, role은 5분마다 재검증)
   },
 
   secret: process.env.NEXTAUTH_SECRET,

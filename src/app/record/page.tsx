@@ -55,7 +55,7 @@ export default function RecordPage() {
   const userName = (session?.user as any)?.userName as string || ''
   const isCO1    = role === 'CO1'
 
-  const [internsList, setInternsList]   = useState<{ name: string; job: string; type: string }[]>([])
+  const [internsList, setInternsList]   = useState<{ name: string; job: string; type: string; is_active: boolean }[]>([])
   const [internsData, setInternsData]   = useState<{ name: string; rowIndex: number; summary: string; final_summary: string; final_summary_public: boolean }[]>([])
   const [records, setRecords]           = useState<InternRecord[]>([])
   const [loading, setLoading]           = useState(true)
@@ -97,7 +97,7 @@ export default function RecordPage() {
     if (internsRes.ok) {
       const data = await internsRes.json()
       const interns = data.interns ?? []
-      setInternsList(interns.map((i: any) => ({ name: i.name, job: i.job, type: i.type })))
+      setInternsList(interns.map((i: any) => ({ name: i.name, job: i.job, type: i.type, is_active: i.is_active !== false })))
       setInternsData(interns.map((i: any) => ({
         name: i.name, rowIndex: i.rowIndex, summary: i.summary ?? '',
         final_summary: i.final_summary ?? '', final_summary_public: i.final_summary_public ?? false,
@@ -305,16 +305,17 @@ export default function RecordPage() {
           marginBottom: '24px',
         }}>
           {internsList.map(intern => {
-            const prevRecs  = getPrevRecords(intern.name, viewAuthor)
-            const jobColor  = JOB_COLOR[intern.type] || '#FF6B2B'
-            const draftVal  = drafts[intern.name] || ''
+            const prevRecs   = getPrevRecords(intern.name, viewAuthor)
+            const jobColor   = JOB_COLOR[intern.type] || '#FF6B2B'
+            const draftVal   = drafts[intern.name] || ''
             const isMyIntern = viewAuthor === userName
+            const isInactive = !intern.is_active
 
             return (
               <div
                 key={intern.name}
                 className="card"
-                style={{ padding: '16px 18px', borderTop: `3px solid ${jobColor}`, display: 'flex', flexDirection: 'column', gap: '10px' }}
+                style={{ padding: '16px 18px', borderTop: `3px solid ${isInactive ? '#9CA3AF' : jobColor}`, display: 'flex', flexDirection: 'column', gap: '10px', opacity: isInactive ? 0.6 : 1 }}
               >
                 {/* 카드 헤더 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -324,6 +325,9 @@ export default function RecordPage() {
                     fontSize: '10.5px', fontWeight: 700, color: jobColor,
                     background: jobColor + '18', padding: '2px 8px', borderRadius: '20px',
                   }}>{intern.job}</span>
+                  {isInactive && (
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#6B7280', background: '#E5E7EB', padding: '2px 7px', borderRadius: '20px' }}>퇴사</span>
+                  )}
                 </div>
 
                 {/* 기존 기록 */}

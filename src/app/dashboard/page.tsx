@@ -134,7 +134,9 @@ export default function DashboardPage() {
 
   useEffect(() => { if (status === 'authenticated' && role !== 'Intern') loadAll() }, [status, role])
 
-  const filtered = filter === 'all' ? interns : interns.filter(i => i.type === filter)
+  // CO1: 전체 표시(퇴사자 포함). Member/Intern(미리보기 포함): 활성 인턴만
+  const baseInterns = isCO1 ? interns : interns.filter(i => i.is_active !== false)
+  const filtered = filter === 'all' ? baseInterns : baseInterns.filter(i => i.type === filter)
 
   function getInternRecords(name: string): InternRecord[] {
     return records.filter(r => r.intern === name).sort((a, b) => b.date.localeCompare(a.date))
@@ -171,6 +173,22 @@ export default function DashboardPage() {
     else showToast('❌ 저장 실패')
     setSaving(false)
     setEditingName(null)
+  }
+
+  async function toggleActive(intern: Intern) {
+    const newVal = intern.is_active === false ? true : false
+    setInterns(prev => prev.map(i => i.rowIndex === intern.rowIndex ? { ...i, is_active: newVal } : i))
+    const res = await fetch('/api/interns', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex: intern.rowIndex, is_active: newVal }),
+    })
+    if (!res.ok) {
+      setInterns(prev => prev.map(i => i.rowIndex === intern.rowIndex ? { ...i, is_active: intern.is_active } : i))
+      showToast('❌ 저장 실패')
+    } else {
+      showToast(newVal ? '✅ 복직 처리됐습니다' : '✅ 퇴사 처리됐습니다')
+    }
   }
 
   // 인턴 미리보기 중: 인턴은 대시보드 접근 불가 안내
@@ -234,9 +252,10 @@ export default function DashboardPage() {
         {/* ── 인턴 카드 그리드 ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px', marginBottom: '36px' }}>
           {filtered.map(intern => {
-            const jobColor  = JOB_COLOR[intern.type] || '#FF6B2B'
-            const jobBg     = JOB_BG[intern.type]    || 'rgba(255,107,43,0.1)'
+            const jobColor   = JOB_COLOR[intern.type] || '#FF6B2B'
+            const jobBg      = JOB_BG[intern.type]    || 'rgba(255,107,43,0.1)'
             const isSelected = selectedName === intern.name
+            const isInactive = intern.is_active === false
 
             return (
               <div
@@ -245,16 +264,25 @@ export default function DashboardPage() {
                 onClick={() => handleCardClick(intern.name)}
                 style={{
                   padding: '14px 16px', cursor: 'pointer',
-                  borderTop: `3px solid ${jobColor}`,
+                  borderTop: `3px solid ${isInactive ? '#9CA3AF' : jobColor}`,
                   outline: isSelected ? `2px solid ${jobColor}` : 'none',
                   outlineOffset: '2px',
+                  opacity: isInactive ? 0.45 : 1,
+                  background: isInactive ? '#F2F1EF' : 'var(--bg-card)',
                 }}
               >
                 {/* 직무 배지 + 이름 */}
                 <div style={{ marginBottom: '10px' }}>
-                  <span style={{ display: 'inline-block', fontSize: '10.5px', fontWeight: 700, color: jobColor, background: jobBg, padding: '2px 8px', borderRadius: '20px', marginBottom: '5px' }}>
-                    {intern.job}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-block', fontSize: '10.5px', fontWeight: 700, color: jobColor, background: jobBg, padding: '2px 8px', borderRadius: '20px' }}>
+                      {intern.job}
+                    </span>
+                    {isInactive && (
+                      <span style={{ display: 'inline-block', fontSize: '10px', fontWeight: 700, color: '#6B7280', background: '#E5E7EB', padding: '2px 7px', borderRadius: '20px' }}>
+                        퇴사
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontWeight: 700, fontSize: '15px' }}>{intern.name}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px' }}>{intern.mbti} · {intern.age}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-primary)', marginTop: '1px' }}>{intern.school}</div>
@@ -387,9 +415,9 @@ export default function DashboardPage() {
                 {filtered.map(intern => {
                   const isSelected  = selectedName   === intern.name
                   const isEditing   = editingName    === intern.name && canEdit
-                  const internRecs  = getInternRecords(intern.name)
                   const attendNote  = attendNotes[intern.name] ?? (intern as any).attend_note ?? ''
                   const jobColor    = JOB_COLOR[intern.type] || '#FF6B2B'
+                  const isInactiveRow = intern.is_active === false
 
                   return (
                     <tr
@@ -397,19 +425,23 @@ export default function DashboardPage() {
                       ref={el => { rowRefs.current[intern.name] = el }}
                       className={isSelected ? 'table-row-selected' : ''}
                       style={{
-                        background: isSelected ? '#FFD6C2' : 'transparent',
+                        background: isSelected ? '#FFD6C2' : isInactiveRow ? '#F5F5F3' : 'transparent',
                         borderBottom: '1px solid var(--border)',
                         transition: 'background 0.15s',
+                        opacity: isInactiveRow ? 0.55 : 1,
                       }}
                     >
                       {/* 직무 — frozen col 0 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: isSelected ? '#FFD6C2' : isInactiveRow ? '#F5F5F3' : 'var(--bg-card)', minWidth: 110, width: 110, willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ fontSize: '11px', fontWeight: 700, color: jobColor, background: jobColor + '18', padding: '2px 8px', borderRadius: '20px' }}>{intern.job}</span>
                       </td>
 
                       {/* 이름 — frozen col 1 */}
-                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 110, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: 90, width: 90, willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
+                      <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 110, zIndex: 1, background: isSelected ? '#FFD6C2' : isInactiveRow ? '#F5F5F3' : 'var(--bg-card)', minWidth: 90, width: 90, willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '14px' }}>{intern.name}</span>
+                          {isInactiveRow && <span style={{ fontSize: '10px', fontWeight: 700, color: '#6B7280', background: '#E5E7EB', padding: '1px 6px', borderRadius: '20px' }}>퇴사</span>}
+                        </div>
                       </td>
 
                       {/* MBTI / 나이 — frozen col 2 */}
@@ -587,12 +619,20 @@ export default function DashboardPage() {
                                 style={{ border: '1px solid var(--border)', borderRadius: '5px', padding: '4px 10px', fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer', background: '#fff', fontFamily: 'inherit' }}>취소</button>
                             </div>
                           ) : (
-                            <button
-                              onClick={() => startEdit(intern)}
-                              disabled={!!editingName}
-                              style={{ border: '1px solid var(--border)', borderRadius: '5px', padding: '4px 10px', fontSize: '11px', color: editingName ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: editingName ? 'default' : 'pointer', background: '#fff', fontFamily: 'inherit', opacity: editingName ? 0.5 : 1 }}>
-                              ✏️ 수정
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <button
+                                onClick={() => startEdit(intern)}
+                                disabled={!!editingName}
+                                style={{ border: '1px solid var(--border)', borderRadius: '5px', padding: '4px 10px', fontSize: '11px', color: editingName ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: editingName ? 'default' : 'pointer', background: '#fff', fontFamily: 'inherit', opacity: editingName ? 0.5 : 1 }}>
+                                ✏️ 수정
+                              </button>
+                              <button
+                                onClick={() => toggleActive(intern)}
+                                disabled={!!editingName}
+                                style={{ border: `1px solid ${intern.is_active === false ? '#6EE7B7' : '#FCA5A5'}`, borderRadius: '5px', padding: '4px 10px', fontSize: '11px', color: intern.is_active === false ? '#059669' : '#DC2626', cursor: editingName ? 'default' : 'pointer', background: intern.is_active === false ? 'rgba(6,95,70,0.05)' : 'rgba(220,38,38,0.05)', fontFamily: 'inherit', opacity: editingName ? 0.5 : 1 }}>
+                                {intern.is_active === false ? '복직' : '퇴사'}
+                              </button>
+                            </div>
                           )}
                         </td>
                       )}

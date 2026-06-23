@@ -573,7 +573,7 @@ export default function FeedbackAdminPage() {
             {filteredLectures.map(([lectureName, { row, feedbacks: lFbs }]) => {
               const isExp    = expanded === lectureName
               const count    = lFbs.length
-              const total    = row ? getTargetCount(row, interns) : 0
+              const total    = row ? getTargetCount(row, interns.filter(i => i.is_active !== false)) : 0
               const pct      = total > 0 ? count / total : 0
               const responseColor = pct >= 1 ? '#059669' : pct >= 0.5 ? '#D97706' : count > 0 ? 'var(--primary)' : 'var(--text-muted)'
               const responseBg    = pct >= 1 ? 'rgba(5,150,105,0.1)' : pct >= 0.5 ? 'rgba(217,119,6,0.1)' : count > 0 ? 'rgba(29,68,144,0.08)' : 'var(--bg-hover)'

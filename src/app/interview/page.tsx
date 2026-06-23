@@ -29,10 +29,15 @@ export default function InterviewPage() {
   const role = (session?.user as any)?.role as string | undefined
 
   const [interviews, setInterviews] = useState<Interview[]>([])
+  const [allInternsMkt, setAllInternsMkt] = useState<{ name: string; is_active: boolean }[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'intern' | 'leader'>('intern')
-  const [internNames, setInternNames] = useState<string[]>([])
   const [selectedDept, setSelectedDept] = useState(DEPARTMENTS[0])
+
+  // CO1: 전체 마케팅 인턴. Member: 활성 인턴만
+  const internNames = allInternsMkt
+    .filter(i => role === 'CO1' || i.is_active)
+    .map(i => i.name)
 
   // 면담 신청 폼
   const [fDept, setFDept] = useState(DEPARTMENTS[0])
@@ -51,11 +56,11 @@ export default function InterviewPage() {
       const ivData = await ivRes.json()
       const intData = await intRes.json()
       setInterviews(ivData.interviews || [])
-      const mkt = (intData.interns || [])
+      const mktAll = (intData.interns || [])
         .filter((i: any) => i.type === 'marketing')
-        .map((i: any) => i.name as string)
-      setInternNames(mkt)
-      setFIntern(prev => prev || mkt[0] || '')
+        .map((i: any) => ({ name: i.name as string, is_active: i.is_active !== false }))
+      setAllInternsMkt(mktAll)
+      setFIntern(prev => prev || mktAll.find((i: { name: string; is_active: boolean }) => i.is_active)?.name || mktAll[0]?.name || '')
     } finally {
       setLoading(false)
     }

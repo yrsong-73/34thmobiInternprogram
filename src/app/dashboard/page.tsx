@@ -242,8 +242,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 관련 자료 링크 (CO1 전용) */}
-        {role === 'CO1' && (
+        {/* 관련 자료 링크 (CO1 전용 — 미리보기 중에는 숨김) */}
+        {isCO1 && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {([
               { label: '34기 마케팅팀 인턴 배치 관련',  href: 'https://docs.google.com/spreadsheets/d/1EhVfR8QRKTjduTAK2mDBM67OxpzaK-_Vp-6RkYI_xoM/edit?gid=1579759855#gid=1579759855' },

@@ -58,7 +58,6 @@ export default function DashboardPage() {
   const [editingName, setEditingName]     = useState<string | null>(null)
   const [editData, setEditData]           = useState<Partial<Intern>>({})
   const [saving, setSaving]               = useState(false)
-  // 지각/결석 메모: { 인턴명: 텍스트 } — Sheets attend_note 컬럼 연동 전 세션 내 유지
   const [attendNotes, setAttendNotes]     = useState<Record<string, string>>({})
   const [attendRates, setAttendRates]     = useState<Record<string, number>>({})
   const [submissions, setSubmissions]     = useState<Record<string, { rowIndex: number; scheduleName: string; submissionUrl: string }[]>>({})
@@ -129,6 +128,10 @@ export default function DashboardPage() {
     setAttendRates(ratesData)
     setSubmissions(subsData)
     setTaskRows(taskRowsData)
+    // Sheets에서 불러온 attend_note로 초기화
+    const notes: Record<string, string> = {}
+    internsData.forEach(i => { if (i.attend_note) notes[i.name] = i.attend_note })
+    setAttendNotes(notes)
     setLoading(false)
   }
 
@@ -167,7 +170,7 @@ export default function DashboardPage() {
     const res = await fetch('/api/interns', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rowIndex: intern.rowIndex, ...editData }),
+      body: JSON.stringify({ rowIndex: intern.rowIndex, ...editData, attend_note: attendNotes[editingName] ?? intern.attend_note ?? '' }),
     })
     if (res.ok) { showToast('✅ 저장됐습니다'); await loadAll() }
     else showToast('❌ 저장 실패')

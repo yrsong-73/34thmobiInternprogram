@@ -90,7 +90,7 @@ function jobToType(job: string): 'marketing' | 'aiax' | 'biz' {
 }
 
 export async function getInterns(): Promise<Intern[]> {
-  const rows = await readSheet('interns!A2:R')
+  const rows = await readSheet('interns!A2:S')
   return rows
     .filter(r => r[0])
     .map((r, i) => ({
@@ -112,12 +112,13 @@ export async function getInterns(): Promise<Intern[]> {
       final_summary:        r[15] || '',
       final_summary_public: r[16]?.toLowerCase() === 'true',
       is_active:            r[17] === undefined || r[17] === '' || r[17]?.toLowerCase() !== 'false',
+      attend_note:          r[18] || '',
       rowIndex:             i + 2,
     }))
 }
 
 export async function updateIntern(rowIndex: number, data: Partial<Intern>): Promise<void> {
-  const rows = await readSheet(`interns!A${rowIndex}:R${rowIndex}`)
+  const rows = await readSheet(`interns!A${rowIndex}:S${rowIndex}`)
   const existing = rows[0] || []
   const merged = [
     data.name             ?? existing[0]  ?? '',
@@ -138,6 +139,7 @@ export async function updateIntern(rowIndex: number, data: Partial<Intern>): Pro
     data.final_summary          !== undefined ? data.final_summary          : (existing[15] ?? ''),
     data.final_summary_public   !== undefined ? (data.final_summary_public ? 'true' : '') : (existing[16] ?? ''),
     data.is_active              !== undefined ? (data.is_active ? 'true' : 'false')       : (existing[17] ?? ''),
+    data.attend_note            !== undefined ? data.attend_note                           : (existing[18] ?? ''),
   ]
   await updateRow('interns', rowIndex, merged)
 }

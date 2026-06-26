@@ -117,8 +117,11 @@ export default function SettingsPage() {
           <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>📊 관리 시트</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {([
-              { label: '인턴십 구글 시트',       href: 'https://docs.google.com/spreadsheets/d/1fk-BF_q5YOeQ-UsWiZUNIZmWBY2AFZyyihhiBFG9RpE/edit?usp=sharing' },
-              { label: '인턴 페이지 관리용 시트', href: 'https://docs.google.com/spreadsheets/d/1KnZ-lI6AI5ssZSuDlHjBUuuS-qjcJ6On9sEXGnF12nE/edit?gid=0#gid=0' },
+              { label: '인턴십 구글 시트',                      href: 'https://docs.google.com/spreadsheets/d/1fk-BF_q5YOeQ-UsWiZUNIZmWBY2AFZyyihhiBFG9RpE/edit?usp=sharing' },
+              { label: '인턴 페이지 관리용 시트',                href: 'https://docs.google.com/spreadsheets/d/1KnZ-lI6AI5ssZSuDlHjBUuuS-qjcJ6On9sEXGnF12nE/edit?gid=0#gid=0' },
+              { label: '인턴십 마스터 폴더',                     href: 'https://drive.google.com/drive/folders/1hDYi09JBYyzlafyYENvlVWCxvuZWl7sd?usp=drive_link' },
+              { label: '[모비 인턴] 배치 희망 팀 조사 (응답결과)', href: 'https://docs.google.com/spreadsheets/d/1sSs6mPgoj7jzn3yblcTUE5woMKK8GMMigQaBFNHfuf0/edit?usp=drive_link' },
+              { label: '2026 모비인턴십 테스트 피드백 (응답결과)', href: 'https://docs.google.com/spreadsheets/d/1Fu5wtCwFrz_fKoN8FSgqCCaaoxnLx1X9flhGT_pl8pU/edit?usp=drive_link' },
             ] as { label: string; href: string }[]).map(({ label, href }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={{
                 display: 'flex', alignItems: 'center', gap: '8px',

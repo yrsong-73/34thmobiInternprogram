@@ -242,6 +242,28 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* 관련 자료 링크 (CO1 전용) */}
+        {role === 'CO1' && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            {([
+              { label: '34기 마케팅팀 인턴 배치 관련',  href: 'https://docs.google.com/spreadsheets/d/1EhVfR8QRKTjduTAK2mDBM67OxpzaK-_Vp-6RkYI_xoM/edit?gid=1579759855#gid=1579759855' },
+              { label: '공통 테스트 결과 상세',          href: 'https://docs.google.com/spreadsheets/d/1RQhfMB1IkpczjalCxw4GYwrLP6IHJvYC7cWdGfzu1PA/edit?usp=sharing' },
+            ]).map(({ label, href }) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px', borderRadius: '8px',
+                background: 'rgba(29,68,144,0.05)', border: '1px solid rgba(29,68,144,0.15)',
+                color: '#1D4490', fontSize: '12.5px', fontWeight: 600, textDecoration: 'none',
+                transition: 'all 0.15s',
+              }}>
+                <i className="fa-brands fa-google-drive" style={{ fontSize: '12px' }} />
+                {label}
+                <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '9px', opacity: 0.5 }} />
+              </a>
+            ))}
+          </div>
+        )}
+
         {/* 직무 필터 탭 */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           {JOB_FILTER.map(f => (

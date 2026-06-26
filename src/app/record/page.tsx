@@ -97,7 +97,12 @@ export default function RecordPage() {
     if (internsRes.ok) {
       const data = await internsRes.json()
       const interns = data.interns ?? []
-      setInternsList(interns.map((i: any) => ({ name: i.name, job: i.job, type: i.type, is_active: i.is_active !== false })))
+      const sorted = [...interns].sort((a: any, b: any) => {
+        const aActive = a.is_active !== false ? 0 : 1
+        const bActive = b.is_active !== false ? 0 : 1
+        return aActive - bActive
+      })
+      setInternsList(sorted.map((i: any) => ({ name: i.name, job: i.job, type: i.type, is_active: i.is_active !== false })))
       setInternsData(interns.map((i: any) => ({
         name: i.name, rowIndex: i.rowIndex, summary: i.summary ?? '',
         final_summary: i.final_summary ?? '', final_summary_public: i.final_summary_public ?? false,

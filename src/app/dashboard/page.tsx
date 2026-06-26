@@ -313,6 +313,19 @@ export default function DashboardPage() {
                   <div style={{ fontSize: '11px', color: 'var(--text-primary)', marginTop: '1px' }}>{intern.school}</div>
                 </div>
 
+                {/* AI 요약 (CO1 전용) */}
+                {isCO1 && intern.summary && (
+                  <div style={{
+                    fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.55,
+                    marginBottom: '8px', padding: '7px 9px',
+                    background: 'rgba(124,58,237,0.05)', borderRadius: '7px',
+                    border: '1px solid rgba(124,58,237,0.12)',
+                    display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                  }}>
+                    {intern.summary}
+                  </div>
+                )}
+
                 {/* 2×2 스탯 */}
                 {(() => {
                   const internTasks = taskRows.filter(t =>

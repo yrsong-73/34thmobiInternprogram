@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
 import { usePreview } from '@/context/PreviewContext'
-import type { Intern, Record as InternRecord } from '@/types'
+import type { Intern, Record as InternRecord, AppSettings } from '@/types'
 
 function showToast(msg: string) {
   const el = document.getElementById('toast')
@@ -62,6 +62,8 @@ export default function DashboardPage() {
   const [attendRates, setAttendRates]     = useState<Record<string, number>>({})
   const [submissions, setSubmissions]     = useState<Record<string, { rowIndex: number; scheduleName: string; submissionUrl: string }[]>>({})
   const [taskRows, setTaskRows]           = useState<{ rowIndex: number; name: string; job_types: string[]; note: string }[]>([])
+  const [cohortLabel, setCohortLabel]     = useState('인턴십')
+  const [settings, setSettings]           = useState<AppSettings | null>(null)
 
   const [showSchool, setShowSchool]   = useState(true)
   const [showCareer, setShowCareer]   = useState(true)
@@ -118,16 +120,25 @@ export default function DashboardPage() {
     return []
   }
 
+  async function fetchSettings(): Promise<AppSettings | null> {
+    try {
+      const res = await fetch('/api/settings')
+      if (res.ok) { const data = await res.json(); return data.settings ?? null }
+    } catch {}
+    return null
+  }
+
   async function loadAll() {
     setLoading(true)
-    const [internsData, recordsData, ratesData, subsData, taskRowsData] = await Promise.all([
-      fetchInterns(), fetchRecords(), fetchAttendRates(), fetchSubmissions(), fetchTaskRows(),
+    const [internsData, recordsData, ratesData, subsData, taskRowsData, settingsData] = await Promise.all([
+      fetchInterns(), fetchRecords(), fetchAttendRates(), fetchSubmissions(), fetchTaskRows(), fetchSettings(),
     ])
     setInterns(internsData)
     setRecords(recordsData)
     setAttendRates(ratesData)
     setSubmissions(subsData)
     setTaskRows(taskRowsData)
+    setSettings(settingsData)
     // Sheets에서 불러온 attend_note로 초기화
     const notes: Record<string, string> = {}
     internsData.forEach(i => { if (i.attend_note) notes[i.name] = i.attend_note })
@@ -136,6 +147,13 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { if (status === 'authenticated' && role !== 'Intern') loadAll() }, [status, role])
+
+  useEffect(() => {
+    fetch('/api/cohorts/active')
+      .then(r => r.json())
+      .then(d => { if (d.label) setCohortLabel(d.label) })
+      .catch(() => {})
+  }, [])
 
   // CO1: 전체 표시(퇴사자 포함). Member/Intern(미리보기 포함): 활성 인턴만
   const baseInterns = isCO1 ? interns : interns.filter(i => i.is_active !== false)
@@ -232,7 +250,7 @@ export default function DashboardPage() {
           <div>
             <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 인턴 대시보드</h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-              34기 인턴 {interns.length}명 · 점수 및 평가 현황
+              {cohortLabel} 인턴 {interns.length}명 · 점수 및 평가 현황
             </p>
           </div>
           {isCO1Real && previewMode !== 'off' && (
@@ -242,13 +260,13 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 관련 자료 링크 (CO1 전용 — 미리보기 중에는 숨김) */}
+        {/* 관련 자료 링크 (CO1 전용 — 미리보기 중에는 숨김, 기수별 settings 시트에서 관리) */}
         {isCO1 && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {([
-              { label: '34기 마케팅팀 인턴 배치 관련',  href: 'https://docs.google.com/spreadsheets/d/1EhVfR8QRKTjduTAK2mDBM67OxpzaK-_Vp-6RkYI_xoM/edit?gid=1579759855#gid=1579759855' },
-              { label: '공통 테스트 결과 상세',          href: 'https://docs.google.com/spreadsheets/d/1RQhfMB1IkpczjalCxw4GYwrLP6IHJvYC7cWdGfzu1PA/edit?usp=sharing' },
-            ]).map(({ label, href }) => (
+              { label: settings?.related_link_1_label, href: settings?.related_link_1_url },
+              { label: settings?.related_link_2_label, href: settings?.related_link_2_url },
+            ] as { label?: string; href?: string }[]).filter(l => l.label && l.href).map(({ label, href }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 padding: '6px 14px', borderRadius: '8px',

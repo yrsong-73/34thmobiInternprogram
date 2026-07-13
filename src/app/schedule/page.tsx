@@ -780,6 +780,7 @@ export default function SchedulePage() {
   const [editRow, setEditRow]             = useState<(Partial<ScheduleRow> & { isNew?: boolean }) | null>(null)
   const [driveUrl, setDriveUrl]           = useState('')
   const [submitUrl, setSubmitUrl]         = useState('')
+  const [cohortLabel, setCohortLabel]     = useState('인턴십')
   const [completedRows, setCompletedRows] = useState<Set<number>>(new Set())
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
@@ -901,6 +902,13 @@ export default function SchedulePage() {
   }, [])
 
   useEffect(() => { if (status === 'authenticated') fetchAll() }, [status, fetchAll])
+
+  useEffect(() => {
+    fetch('/api/cohorts/active')
+      .then(r => r.json())
+      .then(d => { if (d.label) setCohortLabel(d.label) })
+      .catch(() => {})
+  }, [])
 
   // 인턴 선택 시 해당 인턴의 완료 현황 로드
   useEffect(() => {
@@ -1097,14 +1105,14 @@ export default function SchedulePage() {
       <main style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
         <div className="no-print" style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📅 교육 시간표</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>34기 인턴십 | 직무별 시간표 선택 후 자료 링크를 활용하세요</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>{cohortLabel} 인턴십 | 직무별 시간표 선택 후 자료 링크를 활용하세요</p>
         </div>
 
         <div className="no-print" style={{ background: 'var(--mobi-dark)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           {driveUrl && (
             <a href={driveUrl} target="_blank" rel="noopener noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,107,43,0.15)', border: '1px solid rgba(255,107,43,0.3)', borderRadius: '8px', padding: '9px 16px', color: '#FF9469', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-              <i className="fa-brands fa-google-drive" /> 34기 인턴십 마스터 폴더
+              <i className="fa-brands fa-google-drive" /> {cohortLabel} 인턴십 마스터 폴더
             </a>
           )}
           {submitUrl ? (
@@ -1312,7 +1320,7 @@ export default function SchedulePage() {
 
         {/* 인쇄용 헤더 */}
         <div className="print-only" style={{ marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #1D4490' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#1D4490' }}>📅 34기 인턴십 교육 시간표</div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#1D4490' }}>📅 {cohortLabel} 인턴십 교육 시간표</div>
           <div style={{ fontSize: '12px', color: '#444', marginTop: '3px' }}>
             {currentWeek === 1 ? 'Week 1 · 6/22~6/26' : 'Week 2 · 6/29~7/3'}
             {' · '}

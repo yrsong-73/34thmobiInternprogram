@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import { Providers } from './providers'
+import { getActiveCohort } from '@/lib/sheets'
 import './globals.css'
 
-export const metadata: Metadata = {
-  title: '34기 인턴십 | Mobidays',
-  description: 'Mobidays 인턴십 교육 관리 페이지',
+export async function generateMetadata(): Promise<Metadata> {
+  const cohort = await getActiveCohort().catch(() => null)
+  const label = cohort?.label || '인턴십'
+  return {
+    title: `${label} | Mobidays`,
+    description: 'Mobidays 인턴십 교육 관리 페이지',
+  }
 }
 
 export default function RootLayout({

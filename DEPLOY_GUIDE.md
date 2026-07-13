@@ -61,6 +61,14 @@ npm install
 
 4. 스프레드시트 URL에서 **ID 복사**: `https://docs.google.com/spreadsheets/d/`**여기가ID**`/edit`
 
+### 3-1. 마스터 스프레드시트 만들기 (기수 관리용)
+
+기수(34기, 35기, ...)를 사이트에서 전환할 수 있게 해주는, 절대 바뀌지 않는 **별도의 작은 스프레드시트**를 하나 더 만듭니다.
+
+1. [sheets.google.com](https://sheets.google.com)에서 **새 스프레드시트** 하나 더 생성 (예: `Mobidays 인턴십 기수관리`)
+2. 탭 이름을 `cohorts`로 변경 (헤더는 STEP 6 스크립트가 자동으로 채워줍니다)
+3. URL에서 **ID 복사** — 이 값이 `GOOGLE_MASTER_SHEET_ID`가 됩니다
+
 ---
 
 ## STEP 4 — Google Cloud Console 설정
@@ -103,11 +111,13 @@ npm install
 
 ### 4-5. Sheets에 서비스 계정 공유
 
-1. Google Sheets 파일 열기
+1. Google Sheets 파일 열기 (34기 데이터 시트, **그리고 3-1에서 만든 마스터 스프레드시트도 동일하게**)
 2. 우측 상단 **공유** 버튼
 3. 서비스 계정 이메일 입력 (예: `intern-app-sheets@mobidays-intern.iam.gserviceaccount.com`)
    → 서비스 계정 JSON 파일 안 `"client_email"` 값
 4. 권한: **편집자** → **공유**
+
+   > ⚠️ 마스터 스프레드시트에 서비스 계정을 공유하지 않으면 기수 전환 기능이 동작하지 않습니다.
 
 ---
 
@@ -129,6 +139,7 @@ GOOGLE_CLIENT_ID=4-3에서_복사한_클라이언트_ID
 GOOGLE_CLIENT_SECRET=4-3에서_복사한_클라이언트_보안_비밀
 
 GOOGLE_SHEET_ID=3번에서_복사한_스프레드시트_ID
+GOOGLE_MASTER_SHEET_ID=3-1번에서_복사한_마스터_스프레드시트_ID
 GOOGLE_SERVICE_ACCOUNT_KEY=서비스_계정_JSON_한줄로
 ```
 
@@ -150,6 +161,9 @@ node scripts/seed-settings.mjs
 
 # 2. 시간표 데이터 입력 (34기 전체 시간표 — count_for_rate 포함)
 node scripts/seed-schedule-34.mjs
+
+# 3. 마스터 스프레드시트에 34기를 활성 기수로 등록
+node scripts/seed-master-sheet.mjs
 ```
 
 > ⚠️ `seed-schedule.mjs`는 구버전입니다. **`seed-schedule-34.mjs`** 를 사용하세요.
@@ -200,6 +214,7 @@ git push -u origin main
    | `GOOGLE_CLIENT_ID` | 로컬과 동일 |
    | `GOOGLE_CLIENT_SECRET` | 로컬과 동일 |
    | `GOOGLE_SHEET_ID` | 로컬과 동일 |
+   | `GOOGLE_MASTER_SHEET_ID` | 로컬과 동일 |
    | `GOOGLE_SERVICE_ACCOUNT_KEY` | 로컬과 동일 |
 
 4. **Deploy** 클릭 → 완료되면 URL 생성됨 (예: `https://intern-app-xxx.vercel.app`)
@@ -224,6 +239,21 @@ git push -u origin main
 
 ---
 
+## 새 기수(예: 35기) 추가하는 법
+
+1. 기존 34기 스프레드시트를 구글 시트에서 **파일 > 사본 만들기**로 복제합니다 (탭 구조가 그대로 복사됨).
+2. 복제된 사본을 열어 **공유**에서 서비스 계정 이메일을 편집자로 추가합니다.
+3. 새 사본의 `user_permissions` 탭 내용을 정리합니다 — 34기 인턴 계정은 지우고, CO1/Member 등 이번 기수에도 필요한 계정만 남기거나 다시 등록합니다 (권한은 기수별로 독립적으로 관리됩니다).
+4. 필요하면 `interns`/`records`/`schedule`/`completions` 등 탭 내용도 새 기수에 맞게 비우거나 수정합니다.
+5. 새 사본의 URL을 복사합니다.
+6. 사이트에 CO1 계정으로 로그인 → **관리자용 > 기수 관리**에서 "새 기수 추가" → 기수 번호, 표시 이름, 5번에서 복사한 URL을 입력 후 등록합니다.
+7. 목록에서 새로 등록된 기수 옆 **"이 기수로 전환"** 버튼을 눌러 활성 기수를 바꿉니다. 사이트 전체(타이틀, 대시보드, 시간표, 과제제출 등)가 즉시 해당 기수의 데이터로 전환됩니다.
+8. 이후 34기로 다시 돌아가려면 같은 화면에서 34기의 "이 기수로 전환"을 누르면 됩니다 — 두 기수의 데이터는 각자의 스프레드시트에 그대로 남아 있습니다.
+
+> ⚠️ 활성 기수 전환은 서버 캐시(최대 30초)로 인해 반영까지 약간의 지연이 있을 수 있습니다.
+
+---
+
 ## 이후 업데이트
 
 코드를 수정하고 GitHub에 push하면 Vercel이 **자동으로 재배포**합니다.
@@ -244,5 +274,6 @@ git push
 |------|------|------|
 | 로그인 후 "접근 권한이 없는 계정" | user_permissions 시트에 이메일 없음 | seed-settings.mjs 실행 또는 시트에 직접 추가 |
 | 시간표가 안 뜸 | GOOGLE_SHEET_ID 오류 또는 서비스 계정 미공유 | 4-5 단계 확인 |
+| "활성 기수의 스프레드시트가 설정되지 않았습니다" 오류 | 마스터 스프레드시트에 cohorts 데이터 없음 | `node scripts/seed-master-sheet.mjs` 실행 및 마스터 시트 서비스 계정 공유 확인 |
 | Google 로그인 오류 | 리디렉션 URI 불일치 | Google Cloud에 현재 URL 추가 |
 | Vercel 빌드 실패 | 환경변수 누락 | Vercel 환경변수 탭 확인 |

@@ -164,6 +164,22 @@ export interface AppSettings {
   job_visible_aiax: boolean
   job_visible_biz: boolean
   week_2_visible: boolean
+  related_link_1_label: string  // 대시보드 "관련 자료 링크" 1번 (기수별로 다름)
+  related_link_1_url: string
+  related_link_2_label: string // 대시보드 "관련 자료 링크" 2번
+  related_link_2_url: string
+}
+
+// ──────────────────────────────────────────────
+// 기수 (cohort) — 마스터 스프레드시트의 cohorts 탭
+// ──────────────────────────────────────────────
+
+export interface Cohort {
+  batch: string       // '34'
+  label: string       // '34기'
+  sheetId: string     // 해당 기수 데이터 스프레드시트 ID
+  isActive: boolean   // 현재 사이트에 연결된 활성 기수 여부
+  createdAt: string
 }
 
 // ──────────────────────────────────────────────

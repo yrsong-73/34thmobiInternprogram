@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Nav from '@/components/Nav'
-import type { UserPermission, UserRole } from '@/types'
+import type { UserPermission, UserRole, Cohort } from '@/types'
 
 function showToast(msg: string) {
   const el = document.getElementById('toast')
@@ -35,6 +35,13 @@ export default function SettingsPage() {
   const [newRole, setNewRole]     = useState<UserRole>('Intern')
   const [submitting, setSubmitting] = useState(false)
 
+  const [cohorts, setCohorts]           = useState<Cohort[]>([])
+  const [showAddCohort, setShowAddCohort] = useState(false)
+  const [newBatch, setNewBatch]         = useState('')
+  const [newBatchLabel, setNewBatchLabel] = useState('')
+  const [newSheetId, setNewSheetId]     = useState('')
+  const [cohortSubmitting, setCohortSubmitting] = useState(false)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
     if (status === 'authenticated' && role !== 'CO1') router.replace('/schedule')
@@ -46,6 +53,42 @@ export default function SettingsPage() {
     setLoading(false)
   }
   useEffect(() => { if (status === 'authenticated' && role === 'CO1') fetchUsers() }, [status, role])
+
+  async function fetchCohorts() {
+    const res = await fetch('/api/cohorts')
+    if (res.ok) { const { cohorts } = await res.json(); setCohorts(cohorts ?? []) }
+  }
+  useEffect(() => { if (status === 'authenticated' && role === 'CO1') fetchCohorts() }, [status, role])
+
+  async function addCohort() {
+    if (!newBatch.trim() || !newSheetId.trim()) { showToast('⚠️ 기수 번호와 스프레드시트 ID를 입력해주세요'); return }
+    setCohortSubmitting(true)
+    const res = await fetch('/api/cohorts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: newBatch.trim(), label: newBatchLabel.trim(), sheetId: newSheetId.trim() }),
+    })
+    if (res.ok) {
+      showToast(`✅ ${newBatch}기 등록됨`)
+      setNewBatch(''); setNewBatchLabel(''); setNewSheetId(''); setShowAddCohort(false)
+      await fetchCohorts()
+    } else showToast('❌ 등록 실패')
+    setCohortSubmitting(false)
+  }
+
+  async function switchActiveCohort(cohort: Cohort) {
+    if (cohort.isActive) return
+    if (!confirm(`활성 기수를 ${cohort.label}(으)로 전환할까요?\n전환 시 대시보드·기록·시간표·과제제출 등 모든 데이터가 이 기수의 스프레드시트 기준으로 바뀝니다.`)) return
+    const res = await fetch('/api/cohorts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: cohort.batch }),
+    })
+    if (res.ok) {
+      showToast(`✅ ${cohort.label}(으)로 전환됨`)
+      await fetchCohorts()
+    } else showToast('❌ 전환 실패')
+  }
 
   async function changeRole(user: UserPermission, newRoleVal: UserRole) {
     const res = await fetch('/api/admin/users', {
@@ -110,6 +153,78 @@ export default function SettingsPage() {
             style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '10px 18px', borderRadius: '10px', border: 'none', background: 'var(--mobi-orange)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
             <i className="fa-solid fa-plus" /> 사용자 추가
           </button>
+        </div>
+
+        {/* 기수 관리 — CO1 전용 */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: '20px 24px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>🎓 기수 관리</h2>
+            <button onClick={() => setShowAddCohort(p => !p)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--border-strong)', background: '#fff', color: 'var(--text-secondary)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <i className="fa-solid fa-plus" /> 새 기수 추가
+            </button>
+          </div>
+
+          {showAddCohort && (
+            <div style={{ padding: '16px', marginBottom: '16px', borderRadius: '10px', border: '2px solid var(--mobi-orange-border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: '10px', alignItems: 'end' }}>
+                <div>
+                  <label style={labelStyle}>기수 번호 *</label>
+                  <input value={newBatch} onChange={e => setNewBatch(e.target.value)} placeholder="35" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>표시 이름</label>
+                  <input value={newBatchLabel} onChange={e => setNewBatchLabel(e.target.value)} placeholder="35기 (미입력 시 자동)" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>스프레드시트 ID 또는 URL *</label>
+                  <input value={newSheetId} onChange={e => setNewSheetId(e.target.value)} placeholder="구글 시트 URL 전체를 붙여넣어도 됩니다" style={inputStyle} />
+                </div>
+                <button onClick={addCohort} disabled={cohortSubmitting}
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', background: 'var(--mobi-orange)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: cohortSubmitting ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: cohortSubmitting ? 0.7 : 1 }}>
+                  등록
+                </button>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '10px' }}>
+                ⚠️ 기존 기수 스프레드시트를 구글 시트에서 "사본 만들기"로 복제한 뒤, 서비스 계정과 공유하고 그 시트의 ID/URL을 입력하세요.
+              </p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {cohorts.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>등록된 기수가 없습니다</div>
+            ) : (
+              cohorts.map(cohort => (
+                <div key={cohort.batch} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '10px 14px', borderRadius: '8px',
+                  background: cohort.isActive ? 'rgba(255,107,43,0.06)' : 'rgba(0,0,0,0.02)',
+                  border: `1px solid ${cohort.isActive ? 'var(--mobi-orange-border)' : 'var(--border)'}`,
+                }}>
+                  <span style={{
+                    fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                    background: cohort.isActive ? 'var(--mobi-orange)' : 'var(--border)',
+                    color: cohort.isActive ? '#fff' : 'var(--text-muted)',
+                  }}>
+                    {cohort.isActive ? '활성' : '비활성'}
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: '14px' }}>{cohort.label}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{cohort.sheetId}</span>
+                  <button onClick={() => switchActiveCohort(cohort)} disabled={cohort.isActive}
+                    style={{
+                      marginLeft: 'auto', padding: '6px 14px', borderRadius: '8px',
+                      border: '1px solid var(--border-strong)', background: cohort.isActive ? 'transparent' : '#fff',
+                      color: cohort.isActive ? 'var(--text-muted)' : 'var(--text-primary)',
+                      fontSize: '12px', fontWeight: 700, fontFamily: 'inherit',
+                      cursor: cohort.isActive ? 'default' : 'pointer',
+                    }}>
+                    {cohort.isActive ? '사용 중' : '이 기수로 전환'}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* 관리 시트 링크 — CO1 전용 */}

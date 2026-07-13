@@ -1,7 +1,7 @@
 'use client'
 
 import { signIn, useSession } from 'next-auth/react'
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 function LoginContent() {
@@ -9,11 +9,19 @@ function LoginContent() {
   const router = useRouter()
   const params = useSearchParams()
   const error = params.get('error')
+  const [cohortLabel, setCohortLabel] = useState('인턴십')
 
   // 이미 로그인된 경우 바로 이동
   useEffect(() => {
     if (session) router.replace('/schedule')
   }, [session, router])
+
+  useEffect(() => {
+    fetch('/api/cohorts/active')
+      .then(r => r.json())
+      .then(d => { if (d.label) setCohortLabel(d.label) })
+      .catch(() => {})
+  }, [])
 
   return (
     <div style={{
@@ -42,7 +50,7 @@ function LoginContent() {
           padding: '3px 12px',
           borderRadius: '20px',
         }}>
-          34기 인턴십
+          {cohortLabel} 인턴십
         </div>
       </div>
 

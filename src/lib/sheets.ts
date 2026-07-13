@@ -2,12 +2,16 @@
  * Google Sheets API 연동 모듈
  *
  * 환경변수:
- *   GOOGLE_SHEET_ID            — 스프레드시트 ID (URL의 /d/ 이후 부분)
+ *   GOOGLE_MASTER_SHEET_ID     — 기수 목록을 관리하는 마스터 스프레드시트 ID (고정, 절대 바뀌지 않음)
+ *   GOOGLE_SHEET_ID            — (마이그레이션 대비 폴백) 마스터 시트에 활성 기수가 없을 때 사용할 기본 스프레드시트 ID
  *   GOOGLE_SERVICE_ACCOUNT_KEY — 서비스 계정 JSON 한 줄 문자열
+ *
+ * 실제 데이터(interns/records/schedule/... )는 "활성 기수"의 스프레드시트에서 읽고 쓴다.
+ * 활성 기수 및 "기수 → 스프레드시트 ID" 매핑은 마스터 스프레드시트의 `cohorts` 탭에 저장된다.
  */
 
 import { google } from 'googleapis'
-import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment, LectureFeedback, CO1Feedback } from '@/types'
+import type { Intern, Record as InternRecord, UserPermission, AppSettings, ScheduleRow, Notice, NoticeComment, LectureFeedback, CO1Feedback, Cohort } from '@/types'
 
 // ──────────────────────────────────────────────
 // 인증 초기화
@@ -28,16 +32,93 @@ function getSheets() {
   return google.sheets({ version: 'v4', auth: getAuth() })
 }
 
-const SHEET_ID = process.env.GOOGLE_SHEET_ID!
+// ──────────────────────────────────────────────
+// 마스터 스프레드시트 — 기수(cohort) 관리
+//
+// `cohorts` 탭 컬럼: batch | label | sheet_id | is_active | created_at
+// ──────────────────────────────────────────────
+
+const MASTER_SHEET_ID = process.env.GOOGLE_MASTER_SHEET_ID!
+
+async function readMasterSheet(range: string): Promise<string[][]> {
+  const sheets = getSheets()
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: MASTER_SHEET_ID, range })
+  return (res.data.values as string[][]) || []
+}
+
+function rowsToCohorts(rows: string[][]): Cohort[] {
+  return rows
+    .filter(r => r[0])
+    .map(r => ({
+      batch:     r[0],
+      label:     r[1] || `${r[0]}기`,
+      sheetId:   r[2] || '',
+      isActive:  r[3]?.toLowerCase() === 'true',
+      createdAt: r[4] || '',
+    }))
+}
+
+export async function getCohorts(): Promise<Cohort[]> {
+  const rows = await readMasterSheet('cohorts!A2:E')
+  return rowsToCohorts(rows)
+}
+
+export async function getActiveCohort(): Promise<Cohort | null> {
+  const cohorts = await getCohorts()
+  return cohorts.find(c => c.isActive) ?? cohorts[0] ?? null
+}
+
+export async function addCohort(batch: string, label: string, sheetId: string): Promise<void> {
+  const sheets = getSheets()
+  const now = new Date().toISOString()
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: MASTER_SHEET_ID,
+    range: 'cohorts!A1',
+    valueInputOption: 'RAW',
+    requestBody: { values: [[batch, label, sheetId, '', now]] },
+  })
+}
+
+export async function setActiveCohort(batch: string): Promise<void> {
+  const sheets = getSheets()
+  const rows = await readMasterSheet('cohorts!A2:E')
+  const data = rows
+    .map((r, i) => ({ range: `cohorts!D${i + 2}`, values: [[r[0] === batch ? 'true' : 'false']] }))
+    .filter((_, i) => rows[i][0])
+  if (data.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: MASTER_SHEET_ID,
+      requestBody: { valueInputOption: 'RAW', data },
+    })
+  }
+  activeSheetIdCache = null
+}
+
+// 활성 기수의 스프레드시트 ID — 매 요청마다 마스터 시트를 조회하지 않도록 짧은 TTL 캐시
+let activeSheetIdCache: { value: string; expiresAt: number } | null = null
+const ACTIVE_SHEET_CACHE_TTL_MS = 30_000
+
+async function getActiveSheetId(): Promise<string> {
+  const now = Date.now()
+  if (activeSheetIdCache && activeSheetIdCache.expiresAt > now) return activeSheetIdCache.value
+
+  const cohort = await getActiveCohort()
+  const value = cohort?.sheetId || process.env.GOOGLE_SHEET_ID || ''
+  if (!value) throw new Error('활성 기수의 스프레드시트가 설정되지 않았습니다')
+
+  activeSheetIdCache = { value, expiresAt: now + ACTIVE_SHEET_CACHE_TTL_MS }
+  return value
+}
 
 // ──────────────────────────────────────────────
-// 공통 유틸
+// 공통 유틸 (활성 기수의 스프레드시트 대상)
 // ──────────────────────────────────────────────
 
 async function readSheet(range: string): Promise<string[][]> {
   const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     range,
   })
   return (res.data.values as string[][]) || []
@@ -45,8 +126,9 @@ async function readSheet(range: string): Promise<string[][]> {
 
 async function appendRow(sheetName: string, values: (string | number)[]): Promise<void> {
   const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
   await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     range: `${sheetName}!A1`,
     valueInputOption: 'RAW',
     requestBody: { values: [values] },
@@ -59,9 +141,10 @@ async function updateRow(
   values: (string | number)[]
 ): Promise<void> {
   const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
   const range = `${sheetName}!A${rowIndex}:Z${rowIndex}`
   await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     range,
     valueInputOption: 'RAW',
     requestBody: { values: [values] },
@@ -70,8 +153,9 @@ async function updateRow(
 
 async function clearRow(sheetName: string, rowIndex: number): Promise<void> {
   const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
   await sheets.spreadsheets.values.clear({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     range: `${sheetName}!A${rowIndex}:Z${rowIndex}`,
   })
 }
@@ -171,11 +255,12 @@ export async function addRecord(data: Omit<InternRecord, 'rowIndex'>): Promise<v
 
 export async function deleteRecord(rowIndex: number): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'records')
   if (!sheet || sheet.properties?.sheetId == null) throw new Error('records 시트를 찾을 수 없습니다')
   await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     requestBody: {
       requests: [{
         deleteDimension: {
@@ -284,6 +369,10 @@ export async function getSettings(): Promise<AppSettings> {
     job_visible_aiax:       map['job_visible_aiax']       !== 'false',
     job_visible_biz:        map['job_visible_biz']        !== 'false',
     week_2_visible:         map['week_2_visible']         === 'true',
+    related_link_1_label:  map['related_link_1_label']  || '',
+    related_link_1_url:    map['related_link_1_url']    || '',
+    related_link_2_label:  map['related_link_2_label']  || '',
+    related_link_2_url:    map['related_link_2_url']    || '',
   }
 }
 
@@ -318,11 +407,12 @@ export async function getNotices(): Promise<Notice[]> {
 
 async function ensureNoticesSheet(): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'notices')
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID,
+      spreadsheetId,
       requestBody: { requests: [{ addSheet: { properties: { title: 'notices' } } }] },
     })
     await appendRow('notices', ['title', 'content', 'author', 'created_at', 'visible'])
@@ -348,11 +438,12 @@ export async function setNoticeVisible(rowIndex: number, visible: boolean): Prom
 
 export async function deleteNotice(rowIndex: number): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'notices')
   if (!sheet || sheet.properties?.sheetId == null) throw new Error('notices 시트를 찾을 수 없습니다')
   await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     requestBody: { requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }] },
   })
 }
@@ -365,11 +456,12 @@ export async function deleteNotice(rowIndex: number): Promise<void> {
 
 async function ensureNoticeCommentsSheet(): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'notice_comments')
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID,
+      spreadsheetId,
       requestBody: { requests: [{ addSheet: { properties: { title: 'notice_comments' } } }] },
     })
     await appendRow('notice_comments', ['notice_id', 'author', 'content', 'created_at', 'role'])
@@ -399,11 +491,12 @@ export async function addNoticeComment(data: Omit<NoticeComment, 'rowIndex'>): P
 
 export async function deleteNoticeComment(rowIndex: number): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'notice_comments')
   if (!sheet || sheet.properties?.sheetId == null) throw new Error('notice_comments 시트를 찾을 수 없습니다')
   await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     requestBody: { requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }] },
   })
 }
@@ -613,14 +706,15 @@ export async function updateInterviewBooking(rowIndex: number, bookedBy: string)
 
 export async function deleteInterview(rowIndex: number): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === 'interviews')
   if (!sheet || sheet.properties?.sheetId == null) {
     await clearRow('interviews', rowIndex)
     return
   }
   await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId,
     requestBody: {
       requests: [{ deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }],
     },
@@ -638,11 +732,12 @@ export async function deleteInterview(rowIndex: number): Promise<void> {
 
 async function ensureFeedbacksSheet(): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'feedbacks')
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID,
+      spreadsheetId,
       requestBody: { requests: [{ addSheet: { properties: { title: 'feedbacks' } } }] },
     })
     await appendRow('feedbacks', [
@@ -710,11 +805,12 @@ export async function upsertFeedback(data: Omit<LectureFeedback, 'rowIndex'>): P
 
 async function ensureCO1FeedbacksSheet(): Promise<void> {
   const sheets = getSheets()
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
   const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'co1_feedbacks')
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID,
+      spreadsheetId,
       requestBody: { requests: [{ addSheet: { properties: { title: 'co1_feedbacks' } } }] },
     })
     await appendRow('co1_feedbacks', [

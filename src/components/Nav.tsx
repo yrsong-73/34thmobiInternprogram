@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import { usePreview } from '@/context/PreviewContext'
@@ -29,6 +29,7 @@ export default function Nav() {
 
   const role     = (session?.user as any)?.role as string | null | undefined
   const userName = (session?.user as any)?.userName || session?.user?.name || ''
+  const [cohortLabel, setCohortLabel] = useState('인턴십')
 
   // 삭제된 사용자 (role === null) 감지 시 즉시 강제 로그아웃
   useEffect(() => {
@@ -36,6 +37,13 @@ export default function Nav() {
       signOut({ callbackUrl: '/login' })
     }
   }, [session, role])
+
+  useEffect(() => {
+    fetch('/api/cohorts/active')
+      .then(r => r.json())
+      .then(d => { if (d.label) setCohortLabel(d.label) })
+      .catch(() => {})
+  }, [])
 
   const visibleTabs = TABS.filter(t => !t.roles || (effectiveRole && t.roles.includes(effectiveRole)))
 
@@ -78,7 +86,7 @@ export default function Nav() {
             borderRadius: '20px',
             letterSpacing: '0.2px',
           }}>
-            34기 인턴십
+            {cohortLabel} 인턴십
           </span>
         </div>
 

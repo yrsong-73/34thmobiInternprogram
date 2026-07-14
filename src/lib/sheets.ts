@@ -102,7 +102,14 @@ async function getActiveSheetId(): Promise<string> {
   const now = Date.now()
   if (activeSheetIdCache && activeSheetIdCache.expiresAt > now) return activeSheetIdCache.value
 
-  const cohort = await getActiveCohort()
+  // 마스터 시트 조회가 실패해도(미설정/미공유/일시적 오류) 로그인·서비스가 끊기지 않도록
+  // GOOGLE_SHEET_ID로 폴백한다 — CO1이 항상 접속해 설정을 고칠 수 있어야 하기 때문.
+  let cohort: Cohort | null = null
+  try {
+    cohort = await getActiveCohort()
+  } catch {
+    cohort = null
+  }
   const value = cohort?.sheetId || process.env.GOOGLE_SHEET_ID || ''
   if (!value) throw new Error('활성 기수의 스프레드시트가 설정되지 않았습니다')
 

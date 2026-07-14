@@ -5,7 +5,7 @@ import { getActiveCohort } from '@/lib/sheets'
 
 // GET — 인증 없이 활성 기수 표시 정보만 조회 (로그인 화면 등에서 사용)
 export async function GET() {
-  const cohort = await getActiveCohort()
+  const cohort = await getActiveCohort().catch(() => null)
   return NextResponse.json({
     batch: cohort?.batch || '',
     label: cohort?.label || '',

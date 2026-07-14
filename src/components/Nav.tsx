@@ -29,7 +29,7 @@ export default function Nav() {
 
   const role     = (session?.user as any)?.role as string | null | undefined
   const userName = (session?.user as any)?.userName || session?.user?.name || ''
-  const [cohortLabel, setCohortLabel] = useState('인턴십')
+  const [cohortLabel, setCohortLabel] = useState('')
 
   // 삭제된 사용자 (role === null) 감지 시 즉시 강제 로그아웃
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function Nav() {
             borderRadius: '20px',
             letterSpacing: '0.2px',
           }}>
-            {cohortLabel} 인턴십
+            {cohortLabel ? `${cohortLabel} ` : ''}인턴십
           </span>
         </div>
 

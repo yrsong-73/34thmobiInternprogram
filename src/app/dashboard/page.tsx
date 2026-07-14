@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const [attendRates, setAttendRates]     = useState<Record<string, number>>({})
   const [submissions, setSubmissions]     = useState<Record<string, { rowIndex: number; scheduleName: string; submissionUrl: string }[]>>({})
   const [taskRows, setTaskRows]           = useState<{ rowIndex: number; name: string; job_types: string[]; note: string }[]>([])
-  const [cohortLabel, setCohortLabel]     = useState('인턴십')
+  const [cohortLabel, setCohortLabel]     = useState('')
   const [settings, setSettings]           = useState<AppSettings | null>(null)
 
   const [showSchool, setShowSchool]   = useState(true)
@@ -250,7 +250,7 @@ export default function DashboardPage() {
           <div>
             <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 인턴 대시보드</h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-              {cohortLabel} 인턴 {interns.length}명 · 점수 및 평가 현황
+              {cohortLabel ? `${cohortLabel} ` : ''}인턴 {interns.length}명 · 점수 및 평가 현황
             </p>
           </div>
           {isCO1Real && previewMode !== 'off' && (

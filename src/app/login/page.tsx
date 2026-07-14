@@ -9,7 +9,7 @@ function LoginContent() {
   const router = useRouter()
   const params = useSearchParams()
   const error = params.get('error')
-  const [cohortLabel, setCohortLabel] = useState('인턴십')
+  const [cohortLabel, setCohortLabel] = useState('')
 
   // 이미 로그인된 경우 바로 이동
   useEffect(() => {
@@ -50,7 +50,7 @@ function LoginContent() {
           padding: '3px 12px',
           borderRadius: '20px',
         }}>
-          {cohortLabel} 인턴십
+          {cohortLabel ? `${cohortLabel} ` : ''}인턴십
         </div>
       </div>
 

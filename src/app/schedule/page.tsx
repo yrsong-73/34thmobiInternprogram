@@ -166,6 +166,7 @@ function EditModal({
       count_for_rate: row.count_for_rate ?? false,
       flow_stage:     row.flow_stage ?? '',
       week_variant:   row.week_variant ?? '',
+      eval_link:      row.eval_link ?? '',
     })
     setSaving(false)
   }

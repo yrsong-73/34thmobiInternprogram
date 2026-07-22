@@ -46,6 +46,18 @@ function parseRows(timeStr: string): { sr: number; er: number } | null {
   return { sr, er }
 }
 
+/** parseRows()의 역변환 — 그리드 행 번호를 시간 문자열로 (드래그로 시간 재계산할 때 사용) */
+function rowToTime(row: number): string {
+  return row === 19 ? '19:00' : GRID_SLOTS[row - 1]
+}
+
+/** 드래그로 옮길 수 있는 강의인지 (웰컴런치/과제/특수값/파싱 불가 시간은 제외) */
+function isDraggableLecture(lec: ScheduleRow): boolean {
+  if (lec.type === 'lunch' || lec.type === 'task') return false
+  if (lec.time === '최종') return false
+  return parseRows(lec.time) !== null
+}
+
 const TYPE_COLOR: Record<string, string> = {
   online: '#3B82F6', offline: '#059669', self: '#8B5CF6',
   exam: '#E85D75', task: '#F59E0B', lunch: '#B45309',
@@ -794,6 +806,11 @@ export default function SchedulePage() {
   const [myFeedbacks, setMyFeedbacks] = useState<Record<string, LectureFeedback>>({}) // key: lecture_name
   const [feedbackTarget, setFeedbackTarget] = useState<ScheduleRow | null>(null)
 
+  // ── 시간표 드래그(요일/시간 이동) ──────────────────────────
+  const [dragRowIndex, setDragRowIndex]   = useState<number | null>(null)
+  const [dragOverCell, setDragOverCell]   = useState<{ dayNum: number; slotIndex: number } | null>(null)
+  const [savingDrag, setSavingDrag]       = useState(false)
+
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
   const { previewMode, previewInternName, internsList: previewInternsList } = usePreview()
   const [previewCompletedRows, setPreviewCompletedRows] = useState<Set<number>>(new Set())
@@ -1056,6 +1073,60 @@ export default function SchedulePage() {
     showToast('🗑️ 삭제됐습니다')
     setEditRow(null)
     await fetchAll()
+  }
+
+  /** 드래그로 강의를 다른 요일/시간 칸에 떨어뜨렸을 때 — rowIndex는 절대 바꾸지 않고
+   *  같은 행의 day_num/day_label/date_label/eval_label/time 값만 갱신한다 */
+  function handleReschedule(targetDayNum: number, targetSlotIndex: number) {
+    if (!effectiveIsCO1 || savingDrag || dragRowIndex == null) return
+    const draggedRowIndex = dragRowIndex
+    setDragRowIndex(null)
+    setDragOverCell(null)
+
+    const lec = allRows.find(r => r.rowIndex === draggedRowIndex)
+    const targetDay = dayGroups.find(d => d.day_num === targetDayNum)
+    if (!lec || !targetDay) return
+
+    const rows = parseRows(lec.time)
+    if (!rows) return
+    const span = rows.er - rows.sr
+    const newSr = targetSlotIndex + 1
+    const newEr = newSr + span
+    if (newEr > 19) {
+      showToast('⚠️ 이 위치엔 강의를 놓을 수 없어요 (시간표 범위 초과)')
+      return
+    }
+
+    const newTime = `${rowToTime(newSr)}~${rowToTime(newEr)}`
+    if (lec.day_num === targetDay.day_num && lec.time === newTime) return // 제자리 드롭
+
+    const snapshot = allRows
+    const updatedLec: ScheduleRow = {
+      ...lec,
+      day_num:    targetDay.day_num,
+      day_label:  targetDay.day_label,
+      date_label: targetDay.date_label,
+      eval_label: targetDay.eval_label,
+      time:       newTime,
+    }
+    setAllRows(prev => prev.map(r => r.rowIndex === draggedRowIndex ? updatedLec : r))
+    setSavingDrag(true)
+
+    const { rowIndex, ...data } = updatedLec
+    fetch('/api/schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex, ...data }),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('저장 실패')
+        showToast('✅ 시간표가 변경됐습니다')
+      })
+      .catch(() => {
+        setAllRows(snapshot)
+        showToast('⚠️ 저장 실패. 다시 시도해주세요.')
+      })
+      .finally(() => setSavingDrag(false))
   }
 
   async function toggleJobVisible(key: keyof typeof jobVisible) {
@@ -1396,14 +1467,25 @@ export default function SchedulePage() {
               {dayGroups.map((day, di) =>
                 GRID_SLOTS.map((t, i) => {
                   const isLunch = t === '12:00' || t === '12:30'
+                  const isDragOver = dragRowIndex != null && dragOverCell?.dayNum === day.day_num && dragOverCell?.slotIndex === i
+                  const isOccupied = isDragOver && day.lectures.some(l =>
+                    l.rowIndex !== dragRowIndex && isDraggableLecture(l) && parseRows(l.time)?.sr === i + 1
+                  )
                   return (
-                    <div key={`bg-${di}-${i}`} style={{
-                      gridColumn: di + 2, gridRow: i + 1,
-                      borderBottom: '1px dashed var(--border)',
-                      borderLeft: '1px solid var(--border)',
-                      background: isLunch ? '#FFFDF5' : undefined,
-                      boxSizing: 'border-box' as const,
-                    }} />
+                    <div
+                      key={`bg-${di}-${i}`}
+                      style={{
+                        gridColumn: di + 2, gridRow: i + 1,
+                        borderBottom: '1px dashed var(--border)',
+                        borderLeft: '1px solid var(--border)',
+                        background: isDragOver ? (isOccupied ? 'rgba(245,158,11,0.18)' : 'rgba(29,68,144,0.1)') : (isLunch ? '#FFFDF5' : undefined),
+                        outline: isDragOver ? `2px dashed ${isOccupied ? '#F59E0B' : 'var(--primary)'}` : undefined,
+                        outlineOffset: isDragOver ? '-2px' : undefined,
+                        boxSizing: 'border-box' as const,
+                      }}
+                      onDragOver={e => { if (dragRowIndex != null) { e.preventDefault(); setDragOverCell({ dayNum: day.day_num, slotIndex: i }) } }}
+                      onDrop={e => { e.preventDefault(); handleReschedule(day.day_num, i) }}
+                    />
                   )
                 })
               )}
@@ -1475,11 +1557,21 @@ export default function SchedulePage() {
                     const isCompleted  = lec.rowIndex !== undefined && effectiveCompleted.has(lec.rowIndex)
                     const isTask       = lec.type === 'task'
                     const submittedUrl = lec.rowIndex !== undefined ? effectiveSubs[lec.rowIndex] : undefined
+                    const draggableHere = effectiveIsCO1 && !savingDrag && isDraggableLecture(lec)
 
                     return (
                       <div
                         key={lec.rowIndex}
                         data-row-index={lec.rowIndex}
+                        draggable={draggableHere}
+                        onDragStart={e => {
+                          if (!draggableHere || lec.rowIndex === undefined) { e.preventDefault(); return }
+                          e.stopPropagation()
+                          setDragRowIndex(lec.rowIndex)
+                        }}
+                        onDragEnd={() => { setDragRowIndex(null); setDragOverCell(null) }}
+                        onDragOver={e => { if (dragRowIndex != null) { e.preventDefault(); e.stopPropagation(); setDragOverCell({ dayNum: day.day_num, slotIndex: sr - 1 }) } }}
+                        onDrop={e => { if (dragRowIndex != null) { e.preventDefault(); e.stopPropagation(); handleReschedule(day.day_num, sr - 1) } }}
                         style={{
                           gridColumn: di + 2,
                           gridRow: `${sr} / ${er}`,
@@ -1504,6 +1596,14 @@ export default function SchedulePage() {
                         onClick={() => { if (effectiveIsCO1) setEditRow(lec) }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '3px', flexWrap: 'wrap' }}>
+                          {draggableHere && (
+                            <span
+                              title="드래그해서 요일/시간 옮기기"
+                              className="no-print"
+                              style={{ cursor: 'grab', color: 'var(--text-muted)', fontSize: '12px', marginRight: '1px', flexShrink: 0 }}
+                              onClick={e => e.stopPropagation()}
+                            >⠿</span>
+                          )}
                           <span style={{
                             fontSize: '13px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px',
                             background: badgeBg, color: isCompleted ? '#9CA3AF' : '#000',

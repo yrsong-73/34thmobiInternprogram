@@ -28,6 +28,8 @@ const GRID_SLOTS = [
   '13:00','13:30','14:00','14:30','15:00','15:30',
   '16:00','16:30','17:00','17:30','18:00','18:30',
 ]
+/** 강의 수정 모달의 시간 드롭다운 옵션 (그리드에 표시 가능한 시간 전부) */
+const TIME_SLOT_OPTIONS = [...GRID_SLOTS, '19:00']
 const SLOT_ROW: Record<string, number> = {}
 GRID_SLOTS.forEach((t, i) => { SLOT_ROW[t] = i + 1 })
 SLOT_ROW['19:00'] = 19
@@ -151,6 +153,8 @@ function EditModal({
     lunch_with: row.lunch_with ?? '',
     note:       row.note       ?? '',
   })
+  // 시간 드롭다운 표시용 — form.time("10:00~11:00")을 시작/종료로 분해 (직접입력과 항상 동기화)
+  const [timeStart = '', timeEnd = ''] = form.time.split('~').map(s => s.trim())
   // 자료 링크: [{label, url}, ...]
   const initLinks = (() => {
     const labels = row.link_labels ?? []
@@ -253,7 +257,26 @@ function EditModal({
           </div>
           <div>
             <label style={labelStyle}>시간</label>
-            <input style={inputStyle} value={form.time} onChange={e => set('time', e.target.value)} placeholder="예: 10:00~11:00" />
+            <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginBottom: '6px' }}>
+              <select
+                style={{ ...inputStyle, padding: '7px 6px', flex: 1 }}
+                value={timeStart}
+                onChange={e => set('time', e.target.value ? `${e.target.value}~${timeEnd}` : (timeEnd ? `~${timeEnd}` : ''))}
+              >
+                <option value="">시작</option>
+                {TIME_SLOT_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>~</span>
+              <select
+                style={{ ...inputStyle, padding: '7px 6px', flex: 1 }}
+                value={timeEnd}
+                onChange={e => set('time', `${timeStart}~${e.target.value}`)}
+              >
+                <option value="">종료 없음</option>
+                {TIME_SLOT_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <input style={inputStyle} value={form.time} onChange={e => set('time', e.target.value)} placeholder="드롭다운 선택 또는 직접 입력 (예: 최종, 10:00~)" />
           </div>
           <div>
             <label style={labelStyle}>강의 형태</label>

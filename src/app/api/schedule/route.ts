@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth'
 import {
   getScheduleRows,
   addScheduleRow,
-  updateScheduleRow,
+  updateScheduleRowAndSplit,
   deleteScheduleRow,
 } from '@/lib/sheets'
 
@@ -46,8 +46,8 @@ export async function PUT(req: Request) {
   const body = await req.json()
   const { rowIndex, ...data } = body
   if (!rowIndex) return NextResponse.json({ error: 'rowIndex 필수' }, { status: 400 })
-  await updateScheduleRow(rowIndex, data)
-  return NextResponse.json({ success: true })
+  const result = await updateScheduleRowAndSplit(rowIndex, data)
+  return NextResponse.json({ success: true, ...result })
 }
 
 // DELETE — 강의 삭제 (CO1만)

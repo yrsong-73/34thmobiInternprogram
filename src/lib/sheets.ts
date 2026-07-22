@@ -131,15 +131,19 @@ async function readSheet(range: string): Promise<string[][]> {
   return (res.data.values as string[][]) || []
 }
 
-async function appendRow(sheetName: string, values: (string | number)[]): Promise<void> {
+/** @returns 새로 추가된 행의 1-based rowIndex (파싱 실패 시 -1) */
+async function appendRow(sheetName: string, values: (string | number)[]): Promise<number> {
   const sheets = getSheets()
   const spreadsheetId = await getActiveSheetId()
-  await sheets.spreadsheets.values.append({
+  const res = await sheets.spreadsheets.values.append({
     spreadsheetId,
     range: `${sheetName}!A1`,
     valueInputOption: 'RAW',
     requestBody: { values: [values] },
   })
+  const updatedRange = res.data.updates?.updatedRange || ''
+  const match = updatedRange.match(/![A-Za-z]+(\d+)/)
+  return match ? Number(match[1]) : -1
 }
 
 async function updateRow(
@@ -584,13 +588,73 @@ function scheduleRowToValues(d: Omit<ScheduleRow, 'rowIndex'>): (string | number
 }
 
 /** 강의 추가 */
-export async function addScheduleRow(data: Omit<ScheduleRow, 'rowIndex'>): Promise<void> {
-  await appendRow('schedule', scheduleRowToValues(data))
+export async function addScheduleRow(data: Omit<ScheduleRow, 'rowIndex'>): Promise<number> {
+  return appendRow('schedule', scheduleRowToValues(data))
 }
 
 /** 강의 수정 */
 export async function updateScheduleRow(rowIndex: number, data: Omit<ScheduleRow, 'rowIndex'>): Promise<void> {
   await updateRow('schedule', rowIndex, scheduleRowToValues(data))
+}
+
+const ALL_JOB_TYPES = ['marketing', 'aiax', 'biz']
+function expandJobTypes(jobs: string[]): string[] {
+  return jobs.includes('all') ? ALL_JOB_TYPES : jobs
+}
+
+export interface ScheduleSplitResult {
+  createdRows: { jobType: string; rowIndex: number }[]
+  reassignedCompletions: number
+}
+
+/**
+ * 강의 수정 시 대상 직무(job_types)가 좁혀지면(예: 전체 → 마케팅만),
+ * 빠진 직무마다 "수정 전" 원본 내용을 그대로 복제한 새 강의 행을 만든다 —
+ * 같은 과정이라도 직무별로 시간이 달라져야 할 때 매번 새로 입력하지 않아도 되도록.
+ * 이미 그 강의를 완료 체크한 인턴이 있다면, 인턴의 직무에 맞는 새 행으로 체크 기록도 옮긴다.
+ */
+export async function updateScheduleRowAndSplit(
+  rowIndex: number,
+  data: Omit<ScheduleRow, 'rowIndex'>
+): Promise<ScheduleSplitResult> {
+  const beforeRows = await getScheduleRows()
+  const original = beforeRows.find(r => r.rowIndex === rowIndex)
+
+  await updateScheduleRow(rowIndex, data)
+
+  const result: ScheduleSplitResult = { createdRows: [], reassignedCompletions: 0 }
+  if (!original) return result
+
+  const beforeJobs = new Set(expandJobTypes(original.job_types))
+  const afterJobs  = new Set(expandJobTypes(data.job_types ?? original.job_types))
+  const removedJobs = ALL_JOB_TYPES.filter(j => beforeJobs.has(j) && !afterJobs.has(j))
+  if (removedJobs.length === 0) return result
+
+  const [interns, completions, permissions] = await Promise.all([
+    getInterns(), getAllCompletions(), getUserPermissions(),
+  ])
+  const emailToType = new Map<string, string>()
+  permissions.forEach(p => {
+    if (p.role !== 'Intern') return
+    const intern = interns.find(i => i.name === p.name)
+    if (intern) emailToType.set(p.email.toLowerCase(), intern.type)
+  })
+
+  const { rowIndex: _omit, ...clonedBase } = original
+  for (const job of removedJobs) {
+    const newRowIndex = await addScheduleRow({ ...clonedBase, job_types: [job] })
+    result.createdRows.push({ jobType: job, rowIndex: newRowIndex })
+
+    const emails = new Set(
+      completions
+        .filter(c => c.scheduleRowIndex === rowIndex && emailToType.get(c.email.toLowerCase()) === job)
+        .map(c => c.email.toLowerCase())
+    )
+    if (emails.size > 0) {
+      result.reassignedCompletions += await reassignCompletionsScheduleRow(rowIndex, newRowIndex, emails)
+    }
+  }
+  return result
 }
 
 /** 강의 삭제 (행 내용 클리어) */
@@ -666,6 +730,27 @@ export async function removeCompletion(email: string, scheduleRowIndex: number):
     r => r[0]?.toLowerCase() === email.toLowerCase() && Number(r[1]) === scheduleRowIndex
   )
   if (idx >= 0) await clearRow('completions', idx + 2)
+}
+
+/** 강의가 직무별로 분리될 때, 지정된 인턴들의 완료 기록을 새 강의 행으로 재배정
+ *  (schedule_row_index 컬럼만 갱신, 체크 시각/제출 URL은 그대로 유지) */
+async function reassignCompletionsScheduleRow(
+  oldRowIndex: number,
+  newRowIndex: number,
+  emails: Set<string>
+): Promise<number> {
+  const rows = await readSheet('completions!A2:D')
+  let moved = 0
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i]
+    const email = r[0]?.toLowerCase()
+    if (!email || !r[1]) continue
+    if (Number(r[1]) === oldRowIndex && emails.has(email)) {
+      await updateRow('completions', i + 2, [r[0], newRowIndex, r[2] || '', r[3] || ''])
+      moved++
+    }
+  }
+  return moved
 }
 
 // ──────────────────────────────────────────────

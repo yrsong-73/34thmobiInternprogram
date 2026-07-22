@@ -1093,8 +1093,18 @@ export default function SchedulePage() {
 
   async function handleSave(data: Omit<ScheduleRow, 'rowIndex'>) {
     if (editRow?.rowIndex) {
-      await fetch('/api/schedule', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rowIndex: editRow.rowIndex, ...data }) })
-      showToast('✅ 수정됐습니다')
+      const res = await fetch('/api/schedule', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rowIndex: editRow.rowIndex, ...data }) })
+      const result = await res.json().catch(() => null)
+      const createdRows = result?.createdRows as { jobType: string; rowIndex: number }[] | undefined
+      if (createdRows && createdRows.length > 0) {
+        const jobLabel: Record<string, string> = { marketing: '마케팅', aiax: 'AI·AX', biz: '사업기획·전략' }
+        const names = createdRows.map(c => jobLabel[c.jobType] ?? c.jobType).join(', ')
+        let msg = `✅ 수정됐습니다 · ${names} 강의는 원래 시간 그대로 따로 분리됐어요`
+        if (result?.reassignedCompletions > 0) msg += ` (기존 체크 ${result.reassignedCompletions}건 재배정)`
+        showToast(msg)
+      } else {
+        showToast('✅ 수정됐습니다')
+      }
     } else {
       await fetch('/api/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
       showToast('✅ 강의가 추가됐습니다')

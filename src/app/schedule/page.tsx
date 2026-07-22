@@ -58,6 +58,42 @@ function isDraggableLecture(lec: ScheduleRow): boolean {
   return parseRows(lec.time) !== null
 }
 
+/** 같은 요일 안에서 시간이 겹치는 강의들을 구글 캘린더처럼 세로 컬럼으로 나눠 배치하기 위한 계산 */
+function layoutOverlaps(items: { rowIndex: number; sr: number; er: number }[]): Map<number, { col: number; cols: number }> {
+  const result = new Map<number, { col: number; cols: number }>()
+  const sorted = [...items].sort((a, b) => a.sr - b.sr)
+
+  let cluster: typeof sorted = []
+  let clusterEnd = -Infinity
+
+  function flush() {
+    if (cluster.length === 0) return
+    const colEnds: number[] = []
+    const colOf = new Map<number, number>()
+    for (const item of cluster) {
+      let col = colEnds.findIndex(end => end <= item.sr)
+      if (col === -1) { col = colEnds.length; colEnds.push(item.er) }
+      else { colEnds[col] = item.er }
+      colOf.set(item.rowIndex, col)
+    }
+    const cols = colEnds.length
+    cluster.forEach(item => result.set(item.rowIndex, { col: colOf.get(item.rowIndex)!, cols }))
+    cluster = []
+  }
+
+  for (const item of sorted) {
+    if (cluster.length > 0 && item.sr >= clusterEnd) {
+      flush()
+      clusterEnd = -Infinity
+    }
+    cluster.push(item)
+    clusterEnd = Math.max(clusterEnd, item.er)
+  }
+  flush()
+
+  return result
+}
+
 const TYPE_COLOR: Record<string, string> = {
   online: '#3B82F6', offline: '#059669', self: '#8B5CF6',
   exam: '#E85D75', task: '#F59E0B', lunch: '#B45309',
@@ -1468,9 +1504,6 @@ export default function SchedulePage() {
                 GRID_SLOTS.map((t, i) => {
                   const isLunch = t === '12:00' || t === '12:30'
                   const isDragOver = dragRowIndex != null && dragOverCell?.dayNum === day.day_num && dragOverCell?.slotIndex === i
-                  const isOccupied = isDragOver && day.lectures.some(l =>
-                    l.rowIndex !== dragRowIndex && isDraggableLecture(l) && parseRows(l.time)?.sr === i + 1
-                  )
                   return (
                     <div
                       key={`bg-${di}-${i}`}
@@ -1478,8 +1511,8 @@ export default function SchedulePage() {
                         gridColumn: di + 2, gridRow: i + 1,
                         borderBottom: '1px dashed var(--border)',
                         borderLeft: '1px solid var(--border)',
-                        background: isDragOver ? (isOccupied ? 'rgba(245,158,11,0.18)' : 'rgba(29,68,144,0.1)') : (isLunch ? '#FFFDF5' : undefined),
-                        outline: isDragOver ? `2px dashed ${isOccupied ? '#F59E0B' : 'var(--primary)'}` : undefined,
+                        background: isDragOver ? 'rgba(29,68,144,0.1)' : (isLunch ? '#FFFDF5' : undefined),
+                        outline: isDragOver ? '2px dashed var(--primary)' : undefined,
                         outlineOffset: isDragOver ? '-2px' : undefined,
                         boxSizing: 'border-box' as const,
                       }}
@@ -1543,13 +1576,18 @@ export default function SchedulePage() {
               })}
 
               {/* 강의 셀 */}
-              {dayGroups.flatMap((day, di) =>
-                day.lectures
+              {dayGroups.flatMap((day, di) => {
+                const validLecs = day.lectures
                   .filter(lec => lec.type !== 'lunch' && lec.type !== 'task')
-                  .map(lec => {
-                    const rows = parseRows(lec.time)
-                    if (!rows) return null
+                  .map(lec => ({ lec, rows: parseRows(lec.time) }))
+                  .filter((x): x is { lec: ScheduleRow; rows: { sr: number; er: number } } => x.rows !== null)
+
+                // 겹치는 강의는 구글 캘린더처럼 세로 컬럼으로 나눠 배치 (숨겨지는 카드가 없도록)
+                const layout = layoutOverlaps(validLecs.map(({ lec, rows }) => ({ rowIndex: lec.rowIndex, sr: rows.sr, er: rows.er })))
+
+                return validLecs.map(({ lec, rows }) => {
                     const { sr, er }   = rows
+                    const place        = layout.get(lec.rowIndex) ?? { col: 0, cols: 1 }
                     const color        = TYPE_COLOR[lec.type] || '#888'
                     const bg           = TYPE_BG[lec.type]    || '#F9FAFB'
                     const borderColor  = color + '88'
@@ -1575,7 +1613,9 @@ export default function SchedulePage() {
                         style={{
                           gridColumn: di + 2,
                           gridRow: `${sr} / ${er}`,
-                          margin: '2px 3px',
+                          marginTop: '2px', marginBottom: '2px',
+                          width: place.cols > 1 ? `calc(${100 / place.cols}% - 6px)` : 'calc(100% - 6px)',
+                          marginLeft: place.cols > 1 ? `calc(${(100 / place.cols) * place.col}% + 3px)` : '3px',
                           borderRadius: '5px',
                           padding: '5px 7px',
                           background: isCompleted ? '#F3F4F6' : bg,
@@ -1714,7 +1754,7 @@ export default function SchedulePage() {
                       </div>
                     )
                   })
-              )}
+              })}
             </div>
 
             {/* 하단 행: 강의평가 */}

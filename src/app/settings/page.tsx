@@ -43,6 +43,10 @@ export default function SettingsPage() {
   const [newSheetId, setNewSheetId]     = useState('')
   const [cohortSubmitting, setCohortSubmitting] = useState(false)
 
+  const [showReschedulePanel, setShowReschedulePanel] = useState(false)
+  const [newStartDate, setNewStartDate]   = useState('')
+  const [rescheduling, setRescheduling]   = useState(false)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
     if (status === 'authenticated' && role !== 'CO1') router.replace('/schedule')
@@ -89,6 +93,30 @@ export default function SettingsPage() {
       showToast(`✅ ${cohort.label}(으)로 전환됨`)
       await fetchCohorts()
     } else showToast('❌ 전환 실패')
+  }
+
+  async function handleReschedule() {
+    if (!newStartDate) { showToast('⚠️ 시작일을 입력해주세요'); return }
+    if (!confirm(`시작일을 ${newStartDate}로 두고 현재 활성 기수의 시간표 전체 날짜를 다시 계산할까요?\n(day_label의 "N일차" 기준으로 date_label만 새로 계산됩니다. 강의명·시간·링크 등은 그대로 유지됩니다.)`)) return
+    setRescheduling(true)
+    try {
+      const res = await fetch('/api/schedule/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: newStartDate }),
+      })
+      const result = await res.json().catch(() => null)
+      if (res.ok) {
+        let msg = `✅ ${result?.updated ?? 0}개 강의 날짜 재배치 완료`
+        if (result?.skipped > 0) msg += ` (day_label 파싱 실패 ${result.skipped}건 제외)`
+        showToast(msg)
+      } else {
+        showToast(`❌ 재배치 실패: ${result?.error ?? '알 수 없는 오류'}`)
+      }
+    } catch {
+      showToast('❌ 재배치 실패')
+    }
+    setRescheduling(false)
   }
 
   async function changeRole(user: UserPermission, newRoleVal: UserRole) {
@@ -369,6 +397,36 @@ export default function SettingsPage() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 시간표 일정 재배치 — CO1 전용, 기수 시작할 때만 한 번 쓰는 영역이라 접어둠 */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: '20px 24px', marginTop: '24px' }}>
+          <div
+            onClick={() => setShowReschedulePanel(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          >
+            <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>📅 시간표 일정 재배치</h2>
+            <i className={`fa-solid ${showReschedulePanel ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ fontSize: '13px', color: 'var(--text-muted)' }} />
+          </div>
+
+          {showReschedulePanel && (
+            <div style={{ marginTop: '14px' }}>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
+                현재 활성 기수의 시간표는 이전 기수 시트를 복제해서 만들어진 경우가 많아, 각 강의에 적힌 날짜(예: 6/22 월)가 이전 기수 날짜 그대로 남아있을 수 있습니다.
+                아래에 새 시작일을 입력하면 "1일차, 2일차..."라는 순서는 그대로 두고 날짜만 새로 계산해서 한 번에 바꿔줍니다. 강의명·시간·링크 등 다른 내용은 그대로 유지됩니다.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'end' }}>
+                <div>
+                  <label style={labelStyle}>새 시작일 (1일차 날짜)</label>
+                  <input type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} style={inputStyle} />
+                </div>
+                <button onClick={handleReschedule} disabled={rescheduling}
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', background: 'var(--mobi-orange)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: rescheduling ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: rescheduling ? 0.7 : 1 }}>
+                  {rescheduling ? '재배치 중...' : '날짜 재배치'}
+                </button>
               </div>
             </div>
           )}

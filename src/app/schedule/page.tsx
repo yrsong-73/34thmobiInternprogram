@@ -1366,7 +1366,7 @@ export default function SchedulePage() {
                   boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
                 }} />
               </span>
-              Week 2 · 6/29~7/3
+              Week 2
             </button>
           </div>
         )}
@@ -1419,7 +1419,7 @@ export default function SchedulePage() {
                   transition: 'all 0.2s', opacity: isHidden ? 0.6 : 1,
                   display: 'flex', alignItems: 'center', gap: '6px',
                 }}>
-                {w === 1 ? 'Week 1 · 6/22~6/26 공통+직무별 교육' : 'Week 2 · 6/29~7/3 과제 수행 및 최종 발표'}
+                {w === 1 ? 'Week 1 · 공통+직무별 교육' : 'Week 2 · 과제 수행 및 최종 발표'}
                 {isHidden && <span style={{ fontSize: '10px', background: 'rgba(0,0,0,0.08)', borderRadius: '8px', padding: '1px 5px' }}>숨김</span>}
               </button>
             )
@@ -1482,7 +1482,7 @@ export default function SchedulePage() {
         <div className="print-only" style={{ marginBottom: '10px', paddingBottom: '8px', borderBottom: '2px solid #1D4490' }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#1D4490' }}>📅 {cohortLabel ? `${cohortLabel} ` : ''}인턴십 교육 시간표</div>
           <div style={{ fontSize: '12px', color: '#444', marginTop: '3px' }}>
-            {currentWeek === 1 ? 'Week 1 · 6/22~6/26' : 'Week 2 · 6/29~7/3'}
+            {currentWeek === 1 ? 'Week 1' : 'Week 2'}
             {' · '}
             {JOB_TABS.find(t => t.key === currentJob)?.label ?? currentJob}
           </div>

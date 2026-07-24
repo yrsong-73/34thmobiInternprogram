@@ -34,6 +34,15 @@ const SLOT_ROW: Record<string, number> = {}
 GRID_SLOTS.forEach((t, i) => { SLOT_ROW[t] = i + 1 })
 SLOT_ROW['19:00'] = 19
 
+/** 시작/종료 시간으로 소요시간 문자열을 계산 (30분 단위 그리드 시간일 때만, 아니면 null) */
+function computeDuration(start: string, end: string): string | null {
+  const sr = SLOT_ROW[start]
+  const er = SLOT_ROW[end]
+  if (sr === undefined || er === undefined || er <= sr) return null
+  const hours = (er - sr) * 0.5
+  return `${hours % 1 === 0 ? hours : hours.toFixed(1)}h`
+}
+
 const LUNCH_SR = SLOT_ROW['12:00']
 const LUNCH_ER = SLOT_ROW['13:30']
 
@@ -261,7 +270,12 @@ function EditModal({
               <select
                 style={{ ...inputStyle, padding: '7px 6px', flex: 1 }}
                 value={timeStart}
-                onChange={e => set('time', e.target.value ? `${e.target.value}~${timeEnd}` : (timeEnd ? `~${timeEnd}` : ''))}
+                onChange={e => {
+                  const newStart = e.target.value
+                  set('time', newStart ? `${newStart}~${timeEnd}` : (timeEnd ? `~${timeEnd}` : ''))
+                  const dur = computeDuration(newStart, timeEnd)
+                  if (dur) set('duration', dur)
+                }}
               >
                 <option value="">시작</option>
                 {TIME_SLOT_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -270,13 +284,24 @@ function EditModal({
               <select
                 style={{ ...inputStyle, padding: '7px 6px', flex: 1 }}
                 value={timeEnd}
-                onChange={e => set('time', `${timeStart}~${e.target.value}`)}
+                onChange={e => {
+                  const newEnd = e.target.value
+                  set('time', `${timeStart}~${newEnd}`)
+                  const dur = computeDuration(timeStart, newEnd)
+                  if (dur) set('duration', dur)
+                }}
               >
                 <option value="">종료 없음</option>
                 {TIME_SLOT_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <input style={inputStyle} value={form.time} onChange={e => set('time', e.target.value)} placeholder="드롭다운 선택 또는 직접 입력 (예: 최종, 10:00~)" />
+            <input style={inputStyle} value={form.time} onChange={e => {
+              const val = e.target.value
+              set('time', val)
+              const [s = '', en = ''] = val.split('~').map(x => x.trim())
+              const dur = computeDuration(s, en)
+              if (dur) set('duration', dur)
+            }} placeholder="드롭다운 선택 또는 직접 입력 (예: 최종, 10:00~)" />
           </div>
           <div>
             <label style={labelStyle}>강의 형태</label>

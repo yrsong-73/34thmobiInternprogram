@@ -158,12 +158,14 @@ function EditModal({
     type:       row.type       ?? 'offline' as LectureType,
     teacher:    row.teacher    ?? '',
     location:   row.location   ?? '',
-    duration:   row.duration   ?? '',
     lunch_with: row.lunch_with ?? '',
     note:       row.note       ?? '',
   })
   // 시간 드롭다운 표시용 — form.time("10:00~11:00")을 시작/종료로 분해 (직접입력과 항상 동기화)
   const [timeStart = '', timeEnd = ''] = form.time.split('~').map(s => s.trim())
+  // 소요시간은 더 이상 직접 입력받지 않고 시작/종료 시간에서 항상 자동 계산
+  // (계산 불가한 특수 시간값이면 기존 값을 그대로 유지)
+  const computedDuration = computeDuration(timeStart, timeEnd) ?? row.duration ?? ''
   // 자료 링크: [{label, url}, ...]
   const initLinks = (() => {
     const labels = row.link_labels ?? []
@@ -218,7 +220,7 @@ function EditModal({
       type:        form.type as LectureType,
       teacher:     form.teacher,
       location:    form.location,
-      duration:    form.duration,
+      duration:    computedDuration,
       link_labels: validLinks.map(r => r.label.trim()),
       link_urls:   validLinks.map(r => r.url.trim()),
       lunch_with:  form.lunch_with,
@@ -273,8 +275,6 @@ function EditModal({
                 onChange={e => {
                   const newStart = e.target.value
                   set('time', newStart ? `${newStart}~${timeEnd}` : (timeEnd ? `~${timeEnd}` : ''))
-                  const dur = computeDuration(newStart, timeEnd)
-                  if (dur) set('duration', dur)
                 }}
               >
                 <option value="">시작</option>
@@ -287,21 +287,13 @@ function EditModal({
                 onChange={e => {
                   const newEnd = e.target.value
                   set('time', `${timeStart}~${newEnd}`)
-                  const dur = computeDuration(timeStart, newEnd)
-                  if (dur) set('duration', dur)
                 }}
               >
                 <option value="">종료 없음</option>
                 {TIME_SLOT_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <input style={inputStyle} value={form.time} onChange={e => {
-              const val = e.target.value
-              set('time', val)
-              const [s = '', en = ''] = val.split('~').map(x => x.trim())
-              const dur = computeDuration(s, en)
-              if (dur) set('duration', dur)
-            }} placeholder="드롭다운 선택 또는 직접 입력 (예: 최종, 10:00~)" />
+            <input style={inputStyle} value={form.time} onChange={e => set('time', e.target.value)} placeholder="드롭다운 선택 또는 직접 입력 (예: 최종, 10:00~)" />
           </div>
           <div>
             <label style={labelStyle}>강의 형태</label>
@@ -320,8 +312,10 @@ function EditModal({
             <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} placeholder="예: 3층 회의실" />
           </div>
           <div>
-            <label style={labelStyle}>소요시간</label>
-            <input style={inputStyle} value={form.duration} onChange={e => set('duration', e.target.value)} placeholder="예: 1h" />
+            <label style={labelStyle}>소요시간 (자동 계산)</label>
+            <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', background: 'var(--bg-hover, #F3F4F6)', color: computedDuration ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+              {computedDuration || '시간을 선택하면 자동으로 계산돼요'}
+            </div>
           </div>
           {form.type === 'lunch' && (
             <div style={{ gridColumn: '1 / -1', background: 'var(--mobi-orange-light)', border: '1px solid var(--mobi-orange-border)', borderRadius: '8px', padding: '12px' }}>

@@ -662,6 +662,18 @@ export async function deleteScheduleRow(rowIndex: number): Promise<void> {
   await clearRow('schedule', rowIndex)
 }
 
+/** 강의평가(피드백) 대상 여부만 토글 — V열(feedback_exclude)만 갱신, 다른 필드는 건드리지 않음 */
+export async function updateScheduleFeedbackExclude(rowIndex: number, excluded: boolean): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `schedule!V${rowIndex}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[excluded ? 'y' : '']] },
+  })
+}
+
 const KOREAN_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
 /**

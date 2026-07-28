@@ -459,8 +459,7 @@ export default function FeedbackAdminPage() {
       const settings = settingsData.settings
       const jv = settings ?? { job_visible_marketing: true, job_visible_aiax: true, job_visible_biz: true }
       setScheduleRows((schedData.rows ?? []).filter((r: ScheduleRow) => {
-        if (r.type !== 'offline') return false
-        if (r.feedback_exclude) return false
+        if (r.type !== 'offline' && r.type !== 'online') return false
         if (r.week_num === 2 && !settings?.week_2_visible) return false
         if (r.job_types.includes('all')) return true
         if (r.job_types.includes('marketing') && jv.job_visible_marketing) return true
@@ -507,6 +506,19 @@ export default function FeedbackAdminPage() {
     setCO1Target(null)
   }
 
+  async function toggleFeedbackExclude(row: ScheduleRow) {
+    const nextExcluded = !row.feedback_exclude
+    setScheduleRows(prev => prev.map(r => r.rowIndex === row.rowIndex ? { ...r, feedback_exclude: nextExcluded } : r))
+    const res = await fetch('/api/schedule/feedback-exclude', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex: row.rowIndex, excluded: nextExcluded }),
+    })
+    if (!res.ok) {
+      setScheduleRows(prev => prev.map(r => r.rowIndex === row.rowIndex ? { ...r, feedback_exclude: !nextExcluded } : r))
+    }
+  }
+
   if (status === 'loading' || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'var(--text-muted)' }}>불러오는 중...</div>
@@ -530,6 +542,10 @@ export default function FeedbackAdminPage() {
     .filter(([, v]) => v.row !== undefined)
     .filter(([, v]) => filterDay === 'all' || v.row?.date_label === filterDay)
     .sort((a, b) => {
+      // 강의평가 제외(OFF)된 강의는 항상 맨 아래로
+      const aExcluded = a[1].row?.feedback_exclude ? 1 : 0
+      const bExcluded = b[1].row?.feedback_exclude ? 1 : 0
+      if (aExcluded !== bExcluded) return aExcluded - bExcluded
       const aDay = a[1].row?.day_num ?? 99
       const bDay = b[1].row?.day_num ?? 99
       if (aDay !== bDay) return aDay - bDay
@@ -543,7 +559,7 @@ export default function FeedbackAdminPage() {
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 강의 피드백 집계</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-            오프라인 강의 {filteredLectures.length}개 · 인턴 응답 {feedbacks.length}건
+            오프라인·온라인 강의 {filteredLectures.length}개 · 인턴 응답 {feedbacks.length}건
           </p>
         </div>
 
@@ -572,6 +588,7 @@ export default function FeedbackAdminPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {filteredLectures.map(([lectureName, { row, feedbacks: lFbs }]) => {
               const isExp    = expanded === lectureName
+              const isExcluded = !!row?.feedback_exclude
               const count    = lFbs.length
               const total    = row ? getTargetCount(row, interns.filter(i => i.is_active !== false)) : 0
               const pct      = total > 0 ? count / total : 0
@@ -590,6 +607,7 @@ export default function FeedbackAdminPage() {
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
                   borderRadius: 'var(--radius)', overflow: 'hidden',
                   boxShadow: isExp ? 'var(--shadow)' : 'none',
+                  opacity: isExcluded ? 0.55 : 1,
                 }}>
                   {/* 헤더 행 */}
                   <div
@@ -627,6 +645,36 @@ export default function FeedbackAdminPage() {
                         </span>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>/5</span>
                       </div>
+                    )}
+
+                    {/* 강의평가 대상 온/오프 토글 */}
+                    {row && (
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleFeedbackExclude(row) }}
+                        title={isExcluded ? '강의평가 대상에서 제외됨 · 클릭해서 켜기' : '강의평가 대상 · 클릭해서 끄기'}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+                          padding: '4px 10px', borderRadius: '20px', cursor: 'pointer',
+                          fontFamily: 'inherit', fontSize: '11px', fontWeight: 700,
+                          border: isExcluded ? '1.5px dashed var(--border-strong)' : '1.5px solid #22C55E',
+                          background: isExcluded ? 'var(--bg-hover)' : 'rgba(34,197,94,0.08)',
+                          color: isExcluded ? 'var(--text-muted)' : '#15803D',
+                        }}
+                      >
+                        <span style={{
+                          display: 'inline-block', width: '22px', height: '13px',
+                          borderRadius: '999px', background: isExcluded ? '#CBD5E1' : '#22C55E',
+                          position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+                        }}>
+                          <span style={{
+                            position: 'absolute', width: '9px', height: '9px',
+                            borderRadius: '50%', background: '#fff',
+                            top: '2px', left: isExcluded ? '2px' : '11px',
+                            transition: 'left 0.2s',
+                          }} />
+                        </span>
+                        {isExcluded ? '평가 OFF' : '평가 ON'}
+                      </button>
                     )}
 
                     {/* CO1 강사 평가 버튼 + 전체 응답 건수 */}

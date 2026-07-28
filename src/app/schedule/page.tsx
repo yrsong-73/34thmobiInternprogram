@@ -1827,8 +1827,8 @@ export default function SchedulePage() {
                 강의<br/>평가
               </div>
               {dayGroups.map(day => {
-                // 이 일차의 오프라인 강의 (피드백 대상)
-                const offlineLectures = day.lectures.filter(l => l.type === 'offline' && !l.feedback_exclude)
+                // 이 일차의 오프라인·온라인 강의 (피드백 대상)
+                const offlineLectures = day.lectures.filter(l => (l.type === 'offline' || l.type === 'online') && !l.feedback_exclude)
                 const doneFeedbacks   = offlineLectures.filter(l => myFeedbacks[l.name])
                 const allFeedbackDone = offlineLectures.length > 0 && doneFeedbacks.length === offlineLectures.length
 

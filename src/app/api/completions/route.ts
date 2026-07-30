@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   if (role === 'CO1' && !emailParam) {
     const [all, scheduleRows] = await Promise.all([getAllCompletions(), getScheduleRows()])
     const taskRows = scheduleRows
-      .filter(r => r.type === 'task')
+      .filter(r => r.type === 'task' || r.has_assignment)
       .map(r => ({ rowIndex: r.rowIndex, name: r.name, job_types: r.job_types, note: r.note || '' }))
     return NextResponse.json({ all, taskRows })
   }

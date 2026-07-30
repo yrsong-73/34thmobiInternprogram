@@ -96,6 +96,8 @@ export interface ScheduleRow {
   week_variant?: string      // S열 — 'A'|'B'|'' (빈칸=모두 표시, Week 2 A/B 버전 구분)
   has_practice?: boolean      // U열 — 실습이 있었던 강의 여부 (시트에서 직접 관리)
   feedback_exclude?: boolean  // V열 — 피드백 평가 제외 여부 (y = 제외, 시트에서 직접 관리)
+  has_assignment?: boolean       // W열 — 이 강의에 별도 제출 과제가 딸려있는지 (일반 강의도 과제 제출란에 표시됨)
+  assignment_deadline?: string   // X열 — 과제 마감일 (YYYY-MM-DD)
 }
 
 /** 하루 단위 묶음 (UI 렌더링용) */

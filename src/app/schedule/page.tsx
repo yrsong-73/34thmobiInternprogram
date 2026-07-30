@@ -161,6 +161,9 @@ function EditModal({
     lunch_with: row.lunch_with ?? '',
     note:       row.note       ?? '',
   })
+  // 과제 첨부 — 일반 강의에도 제출 과제를 달아서 "과제 제출" 섹션에서 함께 관리
+  const [hasAssignment, setHasAssignment] = useState(row.has_assignment ?? false)
+  const [assignmentDeadline, setAssignmentDeadline] = useState(row.assignment_deadline ?? '')
   // 시간 드롭다운 표시용 — form.time("10:00~11:00")을 시작/종료로 분해 (직접입력과 항상 동기화)
   const [timeStart = '', timeEnd = ''] = form.time.split('~').map(s => s.trim())
   // 소요시간은 더 이상 직접 입력받지 않고 시작/종료 시간에서 항상 자동 계산
@@ -230,6 +233,8 @@ function EditModal({
       flow_stage:     row.flow_stage ?? '',
       week_variant:   row.week_variant ?? '',
       eval_link:      row.eval_link ?? '',
+      has_assignment:      hasAssignment,
+      assignment_deadline: hasAssignment ? assignmentDeadline : '',
     })
     setSaving(false)
   }
@@ -361,6 +366,20 @@ function EditModal({
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>비고 / 과제 안내</label>
             <input style={inputStyle} value={form.note} onChange={e => set('note', e.target.value)} placeholder="예: K-ITAS 가입 신청서 제출" />
+          </div>
+
+          {/* 이 강의에 딸린 제출 과제 — 켜면 "과제 제출" 섹션에도 함께 표시됨 */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: hasAssignment ? '8px' : 0 }}>
+              <input type="checkbox" checked={hasAssignment} onChange={e => setHasAssignment(e.target.checked)} style={{ width: '15px', height: '15px', cursor: 'pointer' }} />
+              📎 이 강의에 제출 과제 있음 (과제 제출 섹션에도 표시)
+            </label>
+            {hasAssignment && (
+              <div style={{ maxWidth: '200px' }}>
+                <label style={labelStyle}>마감일</label>
+                <input type="date" style={inputStyle} value={assignmentDeadline} onChange={e => setAssignmentDeadline(e.target.value)} />
+              </div>
+            )}
           </div>
 
           {/* 대상 직무 — 토글 버튼 */}
@@ -1891,7 +1910,7 @@ export default function SchedulePage() {
             const taskRowsForView = allRows.filter(r => {
               if (r.week_num !== currentWeek) return false
               if (r.week_num === 2 && r.week_variant && r.week_variant !== week2Variant) return false
-              if (r.type !== 'task') return false
+              if (r.type !== 'task' && !r.has_assignment) return false
               return r.job_types.includes('all') || r.job_types.includes(currentJob)
             })
             if (taskRowsForView.length === 0) return null
@@ -1912,6 +1931,11 @@ export default function SchedulePage() {
                         <span style={{ fontSize: '11.5px', fontWeight: 700, color: submitted ? '#059669' : '#92400E' }}>
                           {submitted ? '✅' : '📋'} {lec.name}
                         </span>
+                        {lec.assignment_deadline && (
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: '8px', padding: '1px 7px' }}>
+                            마감 {lec.assignment_deadline}
+                          </span>
+                        )}
                         {lec.note && (
                           <span style={{ fontSize: '10.5px', color: '#9CA3AF' }}>· {lec.note}</span>
                         )}

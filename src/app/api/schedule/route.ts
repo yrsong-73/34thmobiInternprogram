@@ -7,6 +7,7 @@ import {
   getScheduleRows,
   addScheduleRow,
   updateScheduleRowAndSplit,
+  updateScheduleAssignment,
   deleteScheduleRow,
 } from '@/lib/sheets'
 
@@ -31,8 +32,12 @@ export async function POST(req: Request) {
   if (!body.name || !body.week_num || !body.day_num) {
     return NextResponse.json({ error: 'week_num, day_num, name 필수' }, { status: 400 })
   }
-  await addScheduleRow(body)
-  return NextResponse.json({ success: true })
+  const { has_assignment, assignment_deadline, ...data } = body
+  const newRowIndex = await addScheduleRow(data)
+  if (has_assignment) {
+    await updateScheduleAssignment(newRowIndex, true, assignment_deadline || '')
+  }
+  return NextResponse.json({ success: true, rowIndex: newRowIndex })
 }
 
 // PUT — 강의 수정 (CO1만)
@@ -44,9 +49,10 @@ export async function PUT(req: Request) {
   }
 
   const body = await req.json()
-  const { rowIndex, ...data } = body
+  const { rowIndex, has_assignment, assignment_deadline, ...data } = body
   if (!rowIndex) return NextResponse.json({ error: 'rowIndex 필수' }, { status: 400 })
   const result = await updateScheduleRowAndSplit(rowIndex, data)
+  await updateScheduleAssignment(rowIndex, !!has_assignment, assignment_deadline || '')
   return NextResponse.json({ success: true, ...result })
 }
 

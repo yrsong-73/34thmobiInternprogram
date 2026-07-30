@@ -529,7 +529,7 @@ function parseComma(val: string | undefined): string[] {
 }
 
 export async function getScheduleRows(): Promise<ScheduleRow[]> {
-  const rawRows = await readSheet('schedule!A2:V')
+  const rawRows = await readSheet('schedule!A2:X')
   const result: ScheduleRow[] = []
   rawRows.forEach((r, i) => {
     if (!r[0] || !r[7]) return // week_num, name 필수
@@ -557,6 +557,8 @@ export async function getScheduleRows(): Promise<ScheduleRow[]> {
       eval_link:      r[19] || '',      // T열 = 강의평가 링크
       has_practice:      r[20]?.toLowerCase() === 'y', // U열 = 실습 있었던 강의 여부
       feedback_exclude:  r[21]?.toLowerCase() === 'y', // V열 = 피드백 제외 여부
+      has_assignment:      r[22]?.toLowerCase() === 'y', // W열 = 과제 딸려있는 강의 여부
+      assignment_deadline: r[23] || '',                  // X열 = 과제 마감일
     })
   })
   return result
@@ -645,6 +647,11 @@ export async function updateScheduleRowAndSplit(
     const newRowIndex = await addScheduleRow({ ...clonedBase, job_types: [job] })
     result.createdRows.push({ jobType: job, rowIndex: newRowIndex })
 
+    // scheduleRowToValues가 W/X열은 쓰지 않으므로, 과제 정보가 있었다면 별도로 복제
+    if (original.has_assignment) {
+      await updateScheduleAssignment(newRowIndex, true, original.assignment_deadline || '')
+    }
+
     const emails = new Set(
       completions
         .filter(c => c.scheduleRowIndex === rowIndex && emailToType.get(c.email.toLowerCase()) === job)
@@ -671,6 +678,22 @@ export async function updateScheduleFeedbackExclude(rowIndex: number, excluded: 
     range: `schedule!V${rowIndex}`,
     valueInputOption: 'RAW',
     requestBody: { values: [[excluded ? 'y' : '']] },
+  })
+}
+
+/** 강의에 딸린 제출 과제 정보만 갱신 — W(has_assignment)/X(assignment_deadline)열만 건드림 */
+export async function updateScheduleAssignment(
+  rowIndex: number,
+  hasAssignment: boolean,
+  deadline: string
+): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `schedule!W${rowIndex}:X${rowIndex}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[hasAssignment ? 'y' : '', hasAssignment ? deadline : '']] },
   })
 }
 

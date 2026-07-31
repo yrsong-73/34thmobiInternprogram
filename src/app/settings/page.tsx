@@ -472,7 +472,7 @@ export default function SettingsPage() {
             onClick={() => setShowCopyTrackPanel(p => !p)}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
           >
-            <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>🎧 CC 직무 시간표 만들기</h2>
+            <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>🧭 CC 직무 시간표 만들기</h2>
             <i className={`fa-solid ${showCopyTrackPanel ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ fontSize: '13px', color: 'var(--text-muted)' }} />
           </div>
 

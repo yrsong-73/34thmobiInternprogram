@@ -20,7 +20,7 @@ const JOB_TABS = [
   { key: 'marketing', label: '📊 마케팅' },
   { key: 'aiax',      label: '🤖 AI·AX' },
   { key: 'biz',       label: '💼 사업기획·전략' },
-  { key: 'cc',        label: '🎧 CC' },
+  { key: 'cc',        label: '🧭 CC' },
 ]
 
 const GRID_SLOTS = [

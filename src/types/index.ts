@@ -170,6 +170,17 @@ export interface AppSettings {
   related_link_1_url: string
   related_link_2_label: string // 대시보드 "관련 자료 링크" 2번
   related_link_2_url: string
+  // 설정 페이지 "관리 시트" 목록 — 기수마다 URL이 바뀌어서 코드가 아니라 시트에서 직접 관리
+  mgmt_link_1_label: string
+  mgmt_link_1_url: string
+  mgmt_link_2_label: string
+  mgmt_link_2_url: string
+  mgmt_link_3_label: string
+  mgmt_link_3_url: string
+  mgmt_link_4_label: string
+  mgmt_link_4_url: string
+  mgmt_link_5_label: string
+  mgmt_link_5_url: string
 }
 
 // ──────────────────────────────────────────────

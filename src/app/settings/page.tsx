@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Nav from '@/components/Nav'
-import type { UserPermission, UserRole, Cohort } from '@/types'
+import type { UserPermission, UserRole, Cohort, AppSettings } from '@/types'
 
 function showToast(msg: string) {
   const el = document.getElementById('toast')
@@ -47,6 +47,8 @@ export default function SettingsPage() {
   const [newStartDate, setNewStartDate]   = useState('')
   const [rescheduling, setRescheduling]   = useState(false)
 
+  const [settings, setSettings] = useState<AppSettings | null>(null)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
     if (status === 'authenticated' && role !== 'CO1') router.replace('/schedule')
@@ -58,6 +60,14 @@ export default function SettingsPage() {
     setLoading(false)
   }
   useEffect(() => { if (status === 'authenticated' && role === 'CO1') fetchUsers() }, [status, role])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || role !== 'CO1') return
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => setSettings(data.settings ?? null))
+      .catch(() => {})
+  }, [status, role])
 
   async function fetchCohorts() {
     const res = await fetch('/api/cohorts')
@@ -188,13 +198,13 @@ export default function SettingsPage() {
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: '20px 24px', marginBottom: '24px' }}>
           <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>📊 관리 시트</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {([
-              { label: '인턴십 구글 시트',                      href: 'https://docs.google.com/spreadsheets/d/1fk-BF_q5YOeQ-UsWiZUNIZmWBY2AFZyyihhiBFG9RpE/edit?usp=sharing' },
-              { label: '인턴페이지 마스터 시트',                  href: 'https://docs.google.com/spreadsheets/d/1UoXtVftP9lQ2lrAvEZaBL14cKUfa5ibv3xSpufh11NI/edit' },
-              { label: '인턴십 마스터 폴더',                     href: 'https://drive.google.com/drive/folders/1hDYi09JBYyzlafyYENvlVWCxvuZWl7sd?usp=drive_link' },
-              { label: '[모비 인턴] 배치 희망 팀 조사 (응답결과)', href: 'https://docs.google.com/spreadsheets/d/1sSs6mPgoj7jzn3yblcTUE5woMKK8GMMigQaBFNHfuf0/edit?usp=drive_link' },
-              { label: '2026 모비인턴십 테스트 피드백 (응답결과)', href: 'https://docs.google.com/spreadsheets/d/1Fu5wtCwFrz_fKoN8FSgqCCaaoxnLx1X9flhGT_pl8pU/edit?usp=drive_link' },
-            ] as { label: string; href: string }[]).map(({ label, href }) => (
+            {(settings ? [
+              { label: settings.mgmt_link_1_label, href: settings.mgmt_link_1_url },
+              { label: settings.mgmt_link_2_label, href: settings.mgmt_link_2_url },
+              { label: settings.mgmt_link_3_label, href: settings.mgmt_link_3_url },
+              { label: settings.mgmt_link_4_label, href: settings.mgmt_link_4_url },
+              { label: settings.mgmt_link_5_label, href: settings.mgmt_link_5_url },
+            ] : []).filter(l => l.label && l.href).map(({ label, href }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '10px 14px', borderRadius: '8px',

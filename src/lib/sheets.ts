@@ -384,6 +384,16 @@ export async function getSettings(): Promise<AppSettings> {
     related_link_1_url:    map['related_link_1_url']    || '',
     related_link_2_label:  map['related_link_2_label']  || '',
     related_link_2_url:    map['related_link_2_url']    || '',
+    mgmt_link_1_label: map['mgmt_link_1_label'] || '인턴십 구글 시트',
+    mgmt_link_1_url:   map['mgmt_link_1_url']   || 'https://docs.google.com/spreadsheets/d/1fk-BF_q5YOeQ-UsWiZUNIZmWBY2AFZyyihhiBFG9RpE/edit?usp=sharing',
+    mgmt_link_2_label: map['mgmt_link_2_label'] || '인턴페이지 마스터 시트',
+    mgmt_link_2_url:   map['mgmt_link_2_url']   || 'https://docs.google.com/spreadsheets/d/1UoXtVftP9lQ2lrAvEZaBL14cKUfa5ibv3xSpufh11NI/edit',
+    mgmt_link_3_label: map['mgmt_link_3_label'] || '인턴십 마스터 폴더',
+    mgmt_link_3_url:   map['mgmt_link_3_url']   || 'https://drive.google.com/drive/folders/1hDYi09JBYyzlafyYENvlVWCxvuZWl7sd?usp=drive_link',
+    mgmt_link_4_label: map['mgmt_link_4_label'] || '[모비 인턴] 배치 희망 팀 조사 (응답결과)',
+    mgmt_link_4_url:   map['mgmt_link_4_url']   || 'https://docs.google.com/spreadsheets/d/1sSs6mPgoj7jzn3yblcTUE5woMKK8GMMigQaBFNHfuf0/edit?usp=drive_link',
+    mgmt_link_5_label: map['mgmt_link_5_label'] || '2026 모비인턴십 테스트 피드백 (응답결과)',
+    mgmt_link_5_url:   map['mgmt_link_5_url']   || 'https://docs.google.com/spreadsheets/d/1Fu5wtCwFrz_fKoN8FSgqCCaaoxnLx1X9flhGT_pl8pU/edit?usp=drive_link',
   }
 }
 

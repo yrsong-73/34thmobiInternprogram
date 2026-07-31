@@ -1938,17 +1938,26 @@ export default function SchedulePage() {
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {taskRowsForView.map(lec => {
                     const submitted = effectiveSubs[lec.rowIndex]
+                    const linkedToSchedule = lec.type !== 'task'
+                    const editable = effectiveIsCO1 && linkedToSchedule
                     return (
-                      <div key={lec.rowIndex} style={{
+                      <div key={lec.rowIndex}
+                        onClick={() => { if (editable) setEditRow(lec) }}
+                        title={editable ? '클릭해서 강의 수정' : undefined}
+                        style={{
                         display: 'flex', alignItems: 'center', gap: '6px',
                         background: submitted ? '#F0FDF4' : '#FFFBEB',
                         border: `1px solid ${submitted ? '#86EFAC' : '#FDE68A'}`,
                         borderRadius: '10px',
                         padding: '8px 14px',
+                        cursor: editable ? 'pointer' : 'default',
                       }}>
                         <span style={{ fontSize: '11.5px', fontWeight: 700, color: submitted ? '#059669' : '#92400E' }}>
                           {submitted ? '✅' : '📋'} {lec.name}
                         </span>
+                        {linkedToSchedule && (
+                          <span style={{ fontSize: '10px', color: '#9CA3AF' }} title="시간표와 연결된 강의">🔗</span>
+                        )}
                         {lec.assignment_deadline && (
                           <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: '8px', padding: '1px 7px' }}>
                             마감 {lec.assignment_deadline}
@@ -1958,13 +1967,13 @@ export default function SchedulePage() {
                           <span style={{ fontSize: '10.5px', color: '#9CA3AF' }}>· {lec.note}</span>
                         )}
                         {submitted ? (
-                          <a href={submitted} target="_blank" rel="noopener noreferrer"
+                          <a href={submitted} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                             style={{ fontSize: '10.5px', color: '#059669', fontWeight: 600, textDecoration: 'none', background: '#DCFCE7', border: '1px solid #86EFAC', borderRadius: '6px', padding: '2px 8px' }}>
                             링크 보기
                           </a>
                         ) : canCheckHere ? (
                           <button
-                            onClick={() => setSubmitTarget(lec)}
+                            onClick={e => { e.stopPropagation(); setSubmitTarget(lec) }}
                             style={{
                               fontSize: '10.5px', fontWeight: 700,
                               padding: '3px 10px', borderRadius: '6px',

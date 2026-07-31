@@ -20,6 +20,7 @@ const JOB_COLOR: Record<string, string> = {
   marketing_pm: '#FF8C42',
   aiax:         '#3B82F6',
   biz:          '#8B5CF6',
+  cc:           '#0D9488',
 }
 
 const DATE_FILTERS = [

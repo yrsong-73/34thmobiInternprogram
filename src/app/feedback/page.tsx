@@ -457,7 +457,7 @@ export default function FeedbackAdminPage() {
       setCO1AllByLecture(byLecture)
 
       const settings = settingsData.settings
-      const jv = settings ?? { job_visible_marketing: true, job_visible_aiax: true, job_visible_biz: true }
+      const jv = settings ?? { job_visible_marketing: true, job_visible_aiax: true, job_visible_biz: true, job_visible_cc: true }
       setScheduleRows((schedData.rows ?? []).filter((r: ScheduleRow) => {
         if (r.type !== 'offline' && r.type !== 'online') return false
         if (r.week_num === 2 && !settings?.week_2_visible) return false
@@ -465,6 +465,7 @@ export default function FeedbackAdminPage() {
         if (r.job_types.includes('marketing') && jv.job_visible_marketing) return true
         if (r.job_types.includes('aiax')      && jv.job_visible_aiax)      return true
         if (r.job_types.includes('biz')       && jv.job_visible_biz)       return true
+        if (r.job_types.includes('cc')        && jv.job_visible_cc)        return true
         return false
       }))
       setLoading(false)

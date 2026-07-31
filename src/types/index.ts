@@ -17,11 +17,11 @@ export interface AuthUser {
 // 인턴 데이터
 // ──────────────────────────────────────────────
 
-export type InternJobType = 'marketing' | 'aiax' | 'biz'
+export type InternJobType = 'marketing' | 'aiax' | 'biz' | 'cc'
 
 export interface Intern {
   name: string
-  job: string                // '마케팅' | '마케팅(PM)' | 'AI·AX' | '사업기획·전략'
+  job: string                // '마케팅' | '마케팅(PM)' | 'AI·AX' | '사업기획·전략' | 'CC'
   type: InternJobType
   mbti: string
   age: string
@@ -69,7 +69,7 @@ export type LectureType = 'online' | 'offline' | 'self' | 'exam' | 'task' | 'lun
  * E: eval_label F: 교육 흐름  G: time        H: name
  * I: type       J: teacher    K: duration    L: link_labels (콤마 구분)
  * M: link_urls  (콤마 구분)   N: lunch_with  O: note
- * P: job_types  (all | marketing | aiax | biz, 콤마 구분)
+ * P: job_types  (all | marketing | aiax | biz | cc, 콤마 구분)
  * Q: count_for_rate (y/빈칸)  R: location    S: week_variant
  */
 export interface ScheduleRow {
@@ -165,6 +165,7 @@ export interface AppSettings {
   job_visible_marketing: boolean
   job_visible_aiax: boolean
   job_visible_biz: boolean
+  job_visible_cc: boolean
   week_2_visible: boolean
   related_link_1_label: string  // 대시보드 "관련 자료 링크" 1번 (기수별로 다름)
   related_link_1_url: string

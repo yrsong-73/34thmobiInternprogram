@@ -49,6 +49,9 @@ export default function SettingsPage() {
 
   const [settings, setSettings] = useState<AppSettings | null>(null)
 
+  const [showCopyTrackPanel, setShowCopyTrackPanel] = useState(false)
+  const [copyingTrack, setCopyingTrack] = useState(false)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
     if (status === 'authenticated' && role !== 'CO1') router.replace('/schedule')
@@ -127,6 +130,27 @@ export default function SettingsPage() {
       showToast('❌ 재배치 실패')
     }
     setRescheduling(false)
+  }
+
+  async function handleCopyBizToCC() {
+    if (!confirm('사업기획·전략 전용 강의를 그대로 복제해서 CC 전용 강의로 만들까요?\n(전체 공통 강의는 이미 CC에도 적용되므로 복제 대상이 아닙니다. 복제 후 CC 시간표에서 내용을 따로 수정할 수 있습니다.)')) return
+    setCopyingTrack(true)
+    try {
+      const res = await fetch('/api/schedule/copy-job-track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromJob: 'biz', toJob: 'cc' }),
+      })
+      const result = await res.json().catch(() => null)
+      if (res.ok) {
+        showToast(`✅ CC 강의 ${result?.created ?? 0}개 생성 완료`)
+      } else {
+        showToast(`❌ 복사 실패: ${result?.error ?? '알 수 없는 오류'}`)
+      }
+    } catch {
+      showToast('❌ 복사 실패')
+    }
+    setCopyingTrack(false)
   }
 
   async function changeRole(user: UserPermission, newRoleVal: UserRole) {
@@ -438,6 +462,31 @@ export default function SettingsPage() {
                   {rescheduling ? '재배치 중...' : '날짜 재배치'}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* 직무 트랙 복사 — CO1 전용, 신규 직무 추가 시 한 번 쓰는 영역이라 접어둠 */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: '20px 24px', marginTop: '24px' }}>
+          <div
+            onClick={() => setShowCopyTrackPanel(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          >
+            <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>🎧 CC 직무 시간표 만들기</h2>
+            <i className={`fa-solid ${showCopyTrackPanel ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ fontSize: '13px', color: 'var(--text-muted)' }} />
+          </div>
+
+          {showCopyTrackPanel && (
+            <div style={{ marginTop: '14px' }}>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
+                CC 직무 시간표를 처음부터 새로 만드는 대신, 사업기획·전략 전용 강의를 그대로 복제해서 시작할 수 있습니다.
+                (전체 공통 강의는 이미 CC에도 적용되어 있어 복제 대상이 아닙니다) 복제 후에는 CC 탭에서 자유롭게 내용을 수정·삭제하면 됩니다.
+                한 번 실행하면 되돌릴 수 없으니, 이미 CC 강의를 만들어둔 상태라면 중복 생성에 주의하세요.
+              </p>
+              <button onClick={handleCopyBizToCC} disabled={copyingTrack}
+                style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', background: 'var(--mobi-orange)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: copyingTrack ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: copyingTrack ? 0.7 : 1 }}>
+                {copyingTrack ? '복사 중...' : '사업기획·전략 → CC 복사'}
+              </button>
             </div>
           )}
         </div>

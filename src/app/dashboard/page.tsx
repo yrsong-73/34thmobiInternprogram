@@ -19,17 +19,21 @@ const JOB_FILTER = [
   { key: 'all',       label: '전체' },
   { key: 'marketing', label: '마케팅' },
   { key: 'aiax',      label: 'AI·AX' },
+  { key: 'biz',       label: '사업기획·전략' },
+  { key: 'cc',        label: 'CC' },
 ]
 
 const JOB_COLOR: Record<string, string> = {
   marketing: '#FF6B2B',
   aiax:      '#3B82F6',
   biz:       '#8B5CF6',
+  cc:        '#0D9488',
 }
 const JOB_BG: Record<string, string> = {
   marketing: 'rgba(255,107,43,0.1)',
   aiax:         'rgba(59,130,246,0.1)',
   biz:          'rgba(139,92,246,0.1)',
+  cc:           'rgba(13,148,136,0.1)',
 }
 
 

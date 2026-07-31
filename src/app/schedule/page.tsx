@@ -20,6 +20,7 @@ const JOB_TABS = [
   { key: 'marketing', label: '📊 마케팅' },
   { key: 'aiax',      label: '🤖 AI·AX' },
   { key: 'biz',       label: '💼 사업기획·전략' },
+  { key: 'cc',        label: '🎧 CC' },
 ]
 
 const GRID_SLOTS = [
@@ -140,6 +141,7 @@ const JOB_OPTIONS = [
   { key: 'marketing', label: '마케팅' },
   { key: 'aiax',      label: 'AI·AX' },
   { key: 'biz',       label: '사업기획·전략' },
+  { key: 'cc',        label: 'CC' },
 ]
 
 function EditModal({
@@ -904,7 +906,7 @@ export default function SchedulePage() {
   const [submissionsMap, setSubmissionsMap] = useState<Record<number, string>>({})
   const [submitTarget, setSubmitTarget]   = useState<ScheduleRow | null>(null)
   const [internJob, setInternJob]         = useState<string>('')
-  const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true })
+  const [jobVisible, setJobVisible]       = useState({ marketing: true, aiax: true, biz: true, cc: true })
   const [week2Visible, setWeek2Visible]   = useState(false)
   const [week2Variant, setWeek2Variant]   = useState<'A' | 'B'>('A')
   const [hoveredFlowRow, setHoveredFlowRow] = useState<number | null>(null)
@@ -1018,6 +1020,7 @@ export default function SchedulePage() {
         marketing: settings?.job_visible_marketing !== false,
         aiax:      settings?.job_visible_aiax      !== false,
         biz:       settings?.job_visible_biz       !== false,
+        cc:        settings?.job_visible_cc        !== false,
       })
       setWeek2Visible(settings?.week_2_visible !== false)
     } finally {
@@ -1167,7 +1170,7 @@ export default function SchedulePage() {
       const result = await res.json().catch(() => null)
       const createdRows = result?.createdRows as { jobType: string; rowIndex: number }[] | undefined
       if (createdRows && createdRows.length > 0) {
-        const jobLabel: Record<string, string> = { marketing: '마케팅', aiax: 'AI·AX', biz: '사업기획·전략' }
+        const jobLabel: Record<string, string> = { marketing: '마케팅', aiax: 'AI·AX', biz: '사업기획·전략', cc: 'CC' }
         const names = createdRows.map(c => jobLabel[c.jobType] ?? c.jobType).join(', ')
         let msg = `✅ 수정됐습니다 · ${names} 강의는 원래 시간 그대로 따로 분리됐어요`
         if (result?.reassignedCompletions > 0) msg += ` (기존 체크 ${result.reassignedCompletions}건 재배정)`

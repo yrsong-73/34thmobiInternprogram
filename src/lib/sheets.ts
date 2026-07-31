@@ -178,7 +178,8 @@ async function clearRow(sheetName: string, rowIndex: number): Promise<void> {
 //       test_top | test_bottom
 // ──────────────────────────────────────────────
 
-function jobToType(job: string): 'marketing' | 'aiax' | 'biz' {
+function jobToType(job: string): 'marketing' | 'aiax' | 'biz' | 'cc' {
+  if (job.includes('CC')) return 'cc'
   if (job.includes('AI') || job.includes('AX')) return 'aiax'
   if (job.includes('사업') || job.includes('전략')) return 'biz'
   return 'marketing'
@@ -191,7 +192,7 @@ export async function getInterns(): Promise<Intern[]> {
     .map((r, i) => ({
       name:                 r[0] || '',
       job:                  r[1] || '',
-      type:                 ((['marketing','aiax','biz'] as string[]).includes(r[2]) ? r[2] : jobToType(r[1])) as 'marketing' | 'aiax' | 'biz',
+      type:                 ((['marketing','aiax','biz','cc'] as string[]).includes(r[2]) ? r[2] : jobToType(r[1])) as 'marketing' | 'aiax' | 'biz' | 'cc',
       mbti:                 r[3] || '',
       age:                  r[4] || '',
       school:               r[5] || '',
@@ -379,6 +380,7 @@ export async function getSettings(): Promise<AppSettings> {
     job_visible_marketing:  map['job_visible_marketing']  !== 'false',
     job_visible_aiax:       map['job_visible_aiax']       !== 'false',
     job_visible_biz:        map['job_visible_biz']        !== 'false',
+    job_visible_cc:         map['job_visible_cc']         !== 'false',
     week_2_visible:         map['week_2_visible']         === 'true',
     related_link_1_label:  map['related_link_1_label']  || '',
     related_link_1_url:    map['related_link_1_url']    || '',
@@ -609,7 +611,7 @@ export async function updateScheduleRow(rowIndex: number, data: Omit<ScheduleRow
   await updateRow('schedule', rowIndex, scheduleRowToValues(data))
 }
 
-const ALL_JOB_TYPES = ['marketing', 'aiax', 'biz']
+const ALL_JOB_TYPES = ['marketing', 'aiax', 'biz', 'cc']
 function expandJobTypes(jobs: string[]): string[] {
   return jobs.includes('all') ? ALL_JOB_TYPES : jobs
 }
@@ -677,6 +679,28 @@ export async function updateScheduleRowAndSplit(
 /** 강의 삭제 (행 내용 클리어) */
 export async function deleteScheduleRow(rowIndex: number): Promise<void> {
   await clearRow('schedule', rowIndex)
+}
+
+/**
+ * 특정 직무(fromJob) 전용 강의들을 그대로 복제해서 새 직무(toJob) 전용 강의로 만든다
+ * (예: 신규 직무 트랙을 만들 때 기존 직무 시간표를 초기값으로 복사).
+ * job_types에 'all'이 포함된 강의는 이미 모든 직무에 적용되므로 복제 대상에서 제외한다.
+ */
+export async function copyJobTrackSchedule(fromJob: string, toJob: string): Promise<{ created: number }> {
+  const rows = await getScheduleRows()
+  const sourceRows = rows.filter(r => !r.job_types.includes('all') && r.job_types.includes(fromJob))
+
+  let created = 0
+  for (const row of sourceRows) {
+    const { rowIndex, ...clonedBase } = row
+    const newJobTypes = row.job_types.map(j => j === fromJob ? toJob : j)
+    const newRowIndex = await addScheduleRow({ ...clonedBase, job_types: newJobTypes })
+    if (row.has_assignment) {
+      await updateScheduleAssignment(newRowIndex, true, row.assignment_deadline || '')
+    }
+    created++
+  }
+  return { created }
 }
 
 /** 강의평가(피드백) 대상 여부만 토글 — V열(feedback_exclude)만 갱신, 다른 필드는 건드리지 않음 */

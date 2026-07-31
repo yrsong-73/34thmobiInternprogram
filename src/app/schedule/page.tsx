@@ -233,8 +233,8 @@ function EditModal({
       flow_stage:     row.flow_stage ?? '',
       week_variant:   row.week_variant ?? '',
       eval_link:      row.eval_link ?? '',
-      has_assignment:      hasAssignment,
-      assignment_deadline: hasAssignment ? assignmentDeadline : '',
+      has_assignment:      form.type === 'task' ? true : hasAssignment,
+      assignment_deadline: (form.type === 'task' ? true : hasAssignment) ? assignmentDeadline : '',
     })
     setSaving(false)
   }
@@ -368,17 +368,26 @@ function EditModal({
             <input style={inputStyle} value={form.note} onChange={e => set('note', e.target.value)} placeholder="예: K-ITAS 가입 신청서 제출" />
           </div>
 
-          {/* 이 강의에 딸린 제출 과제 — 켜면 "과제 제출" 섹션에도 함께 표시됨 */}
+          {/* 과제 마감일 — '과제' 형태는 항상 표시, 그 외 형태는 체크박스로 첨부 여부 선택 */}
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: hasAssignment ? '8px' : 0 }}>
-              <input type="checkbox" checked={hasAssignment} onChange={e => setHasAssignment(e.target.checked)} style={{ width: '15px', height: '15px', cursor: 'pointer' }} />
-              📎 이 강의에 제출 과제 있음 (과제 제출 섹션에도 표시)
-            </label>
-            {hasAssignment && (
+            {form.type === 'task' ? (
               <div style={{ maxWidth: '200px' }}>
                 <label style={labelStyle}>마감일</label>
                 <input type="date" style={inputStyle} value={assignmentDeadline} onChange={e => setAssignmentDeadline(e.target.value)} />
               </div>
+            ) : (
+              <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: hasAssignment ? '8px' : 0 }}>
+                  <input type="checkbox" checked={hasAssignment} onChange={e => setHasAssignment(e.target.checked)} style={{ width: '15px', height: '15px', cursor: 'pointer' }} />
+                  📎 이 강의에 제출 과제 있음 (시간표엔 그대로 보이고, 과제 제출 섹션에도 함께 표시)
+                </label>
+                {hasAssignment && (
+                  <div style={{ maxWidth: '200px' }}>
+                    <label style={labelStyle}>마감일</label>
+                    <input type="date" style={inputStyle} value={assignmentDeadline} onChange={e => setAssignmentDeadline(e.target.value)} />
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -1912,6 +1921,12 @@ export default function SchedulePage() {
               if (r.week_num === 2 && r.week_variant && r.week_variant !== week2Variant) return false
               if (r.type !== 'task' && !r.has_assignment) return false
               return r.job_types.includes('all') || r.job_types.includes(currentJob)
+            }).sort((a, b) => {
+              // 마감일 이른 순 — 마감일 없는 항목은 뒤로 (모든 직무 탭에 동일하게 적용)
+              if (!a.assignment_deadline && !b.assignment_deadline) return 0
+              if (!a.assignment_deadline) return 1
+              if (!b.assignment_deadline) return -1
+              return a.assignment_deadline.localeCompare(b.assignment_deadline)
             })
             if (taskRowsForView.length === 0) return null
             return (

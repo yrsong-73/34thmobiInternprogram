@@ -514,9 +514,15 @@ export default function DashboardPage() {
                         {!intern.mbti && !intern.age && <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
 
-                      {/* 학교 — 항상 렌더링, 토글로 너비 변경 */}
-                      <td style={{ padding: showSchool ? '12px 8px' : '12px 2px', overflow: 'hidden', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: showSchool ? 110 : 40, width: showSchool ? 110 : 40, transition: 'all 0.2s', willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
-                        {showSchool ? intern.school : ''}
+                      {/* 학교 — 항상 렌더링, 토글로 너비 변경. 학교/학과가 길면 줄바꿔서 표시 */}
+                      <td style={{ padding: showSchool ? '12px 8px' : '12px 2px', overflow: 'hidden', color: 'var(--text-secondary)', fontSize: '12.5px', position: 'sticky', left: 310, zIndex: 1, background: isSelected ? '#FFD6C2' : 'var(--bg-card)', minWidth: showSchool ? 110 : 40, width: showSchool ? 110 : 40, transition: 'all 0.2s', willChange: 'transform', borderBottom: '1px solid var(--border)' }}>
+                        {showSchool && (
+                          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+                            {intern.school.split('/').map((part, i) => (
+                              <span key={i} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{part.trim()}</span>
+                            ))}
+                          </div>
+                        )}
                       </td>
 
                       {/* 경력 — 항상 렌더링, 토글로 너비 변경 */}

@@ -1939,7 +1939,7 @@ export default function SchedulePage() {
                   {taskRowsForView.map(lec => {
                     const submitted = effectiveSubs[lec.rowIndex]
                     const linkedToSchedule = lec.type !== 'task'
-                    const editable = effectiveIsCO1 && linkedToSchedule
+                    const editable = effectiveIsCO1
                     return (
                       <div key={lec.rowIndex}
                         onClick={() => { if (editable) setEditRow(lec) }}

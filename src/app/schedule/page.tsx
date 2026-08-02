@@ -1869,7 +1869,7 @@ export default function SchedulePage() {
                     padding: '8px 10px',
                     display: 'flex', flexDirection: 'column', gap: '5px',
                   }}>
-                    {day.eval_label && (
+                    {(offlineLectures.length > 0 || day.eval_label) && (
                       effectiveIsIntern ? (
                         /* 실제 인턴: 강의별 피드백 버튼 */
                         offlineLectures.length === 0 ? (
@@ -1905,9 +1905,9 @@ export default function SchedulePage() {
                           </div>
                         )
                       ) : (
-                        /* CO1·Member: 응답 현황 표시 */
+                        /* CO1·Member: 응답 현황 표시 — eval_label이 비어있어도 대상 강의 수는 항상 보여줌 */
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          {day.eval_label}
+                          {offlineLectures.length > 0 ? `강의평가 대상 ${offlineLectures.length}개` : day.eval_label}
                         </span>
                       )
                     )}

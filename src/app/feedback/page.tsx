@@ -28,9 +28,15 @@ function avg(nums: number[]): number {
   return valid.reduce((a, b) => a + b, 0) / valid.length
 }
 
-function getTargetCount(row: ScheduleRow, interns: Intern[]): number {
-  if (row.job_types.includes('all')) return interns.length
-  return interns.filter(i => row.job_types.includes(i.type)).length
+/**
+ * 직무 분리(job-split)나 직무별 시간표 복사(예: 사업기획전략 → CC)로 인해
+ * 같은 강의명이 여러 행(직무별 클론)으로 존재할 수 있다 — 대상 인원은 이 행들의
+ * job_types를 합집합으로 봐야 실제 응답자 수와 어긋나지 않는다.
+ */
+function getTargetCount(rows: ScheduleRow[], interns: Intern[]): number {
+  if (rows.some(r => r.job_types.includes('all'))) return interns.length
+  const jobs = new Set(rows.flatMap(r => r.job_types))
+  return interns.filter(i => jobs.has(i.type)).length
 }
 
 function ScoreBar({ score, max = 5 }: { score: number; max?: number }) {
@@ -513,16 +519,20 @@ export default function FeedbackAdminPage() {
     setCO1Target(null)
   }
 
-  async function toggleFeedbackExclude(row: ScheduleRow) {
-    const nextExcluded = !row.feedback_exclude
-    setScheduleRows(prev => prev.map(r => r.rowIndex === row.rowIndex ? { ...r, feedback_exclude: nextExcluded } : r))
-    const res = await fetch('/api/schedule/feedback-exclude', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rowIndex: row.rowIndex, excluded: nextExcluded }),
-    })
-    if (!res.ok) {
-      setScheduleRows(prev => prev.map(r => r.rowIndex === row.rowIndex ? { ...r, feedback_exclude: !nextExcluded } : r))
+  /** rows: 같은 강의명을 공유하는 모든 직무별 클론 행 — 하나의 강의로 취급해 전부 함께 토글한다 */
+  async function toggleFeedbackExclude(rows: ScheduleRow[]) {
+    const nextExcluded = !rows.every(r => r.feedback_exclude)
+    const targetIndexes = new Set(rows.map(r => r.rowIndex))
+    setScheduleRows(prev => prev.map(r => targetIndexes.has(r.rowIndex) ? { ...r, feedback_exclude: nextExcluded } : r))
+    const results = await Promise.all(rows.map(row =>
+      fetch('/api/schedule/feedback-exclude', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: row.rowIndex, excluded: nextExcluded }),
+      })
+    ))
+    if (results.some(res => !res.ok)) {
+      setScheduleRows(prev => prev.map(r => targetIndexes.has(r.rowIndex) ? { ...r, feedback_exclude: !nextExcluded } : r))
     }
   }
 
@@ -532,31 +542,31 @@ export default function FeedbackAdminPage() {
     </div>
   )
 
-  // 강의별 집계
-  const lectureMap: Record<string, { row?: ScheduleRow; feedbacks: LectureFeedback[] }> = {}
+  // 강의별 집계 — 직무 분리/직무별 시간표 복사로 같은 강의명의 행이 여러 개일 수 있어 rows[]로 모두 보관
+  const lectureMap: Record<string, { rows: ScheduleRow[]; feedbacks: LectureFeedback[] }> = {}
   for (const row of scheduleRows) {
-    if (!lectureMap[row.name]) lectureMap[row.name] = { feedbacks: [] }
-    lectureMap[row.name].row = row
+    if (!lectureMap[row.name]) lectureMap[row.name] = { rows: [], feedbacks: [] }
+    lectureMap[row.name].rows.push(row)
   }
   for (const fb of feedbacks) {
-    if (!lectureMap[fb.lecture_name]) lectureMap[fb.lecture_name] = { feedbacks: [] }
+    if (!lectureMap[fb.lecture_name]) lectureMap[fb.lecture_name] = { rows: [], feedbacks: [] }
     lectureMap[fb.lecture_name].feedbacks.push(fb)
   }
 
   const allDates = Array.from(new Set(scheduleRows.map(r => r.date_label))).sort((a, b) => dateSortKey(a) - dateSortKey(b))
 
   const filteredLectures = Object.entries(lectureMap)
-    .filter(([, v]) => v.row !== undefined)
-    .filter(([, v]) => filterDay === 'all' || v.row?.date_label === filterDay)
+    .filter(([, v]) => v.rows.length > 0)
+    .filter(([, v]) => filterDay === 'all' || v.rows.some(r => r.date_label === filterDay))
     .sort((a, b) => {
-      // 강의평가 제외(OFF)된 강의는 항상 맨 아래로
-      const aExcluded = a[1].row?.feedback_exclude ? 1 : 0
-      const bExcluded = b[1].row?.feedback_exclude ? 1 : 0
+      // 강의평가 제외(OFF)된 강의는 항상 맨 아래로 — 모든 클론 행이 제외됐을 때만 OFF로 간주
+      const aExcluded = a[1].rows.every(r => r.feedback_exclude) ? 1 : 0
+      const bExcluded = b[1].rows.every(r => r.feedback_exclude) ? 1 : 0
       if (aExcluded !== bExcluded) return aExcluded - bExcluded
-      const aDay = a[1].row?.day_num ?? 99
-      const bDay = b[1].row?.day_num ?? 99
+      const aDay = a[1].rows[0]?.day_num ?? 99
+      const bDay = b[1].rows[0]?.day_num ?? 99
       if (aDay !== bDay) return aDay - bDay
-      return (a[1].row?.time ?? '').localeCompare(b[1].row?.time ?? '')
+      return (a[1].rows[0]?.time ?? '').localeCompare(b[1].rows[0]?.time ?? '')
     })
 
   return (
@@ -593,11 +603,13 @@ export default function FeedbackAdminPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {filteredLectures.map(([lectureName, { row, feedbacks: lFbs }]) => {
+            {filteredLectures.map(([lectureName, { rows, feedbacks: lFbs }]) => {
+              // 대상 정보 표시는 제외되지 않은 행을 우선(직무별 클론 중 하나만 OFF일 수 있어서)
+              const row      = rows.find(r => !r.feedback_exclude) ?? rows[0]
               const isExp    = expanded === lectureName
-              const isExcluded = !!row?.feedback_exclude
+              const isExcluded = rows.length > 0 && rows.every(r => r.feedback_exclude)
               const count    = lFbs.length
-              const total    = row ? getTargetCount(row, interns.filter(i => i.is_active !== false)) : 0
+              const total    = rows.length > 0 ? getTargetCount(rows, interns.filter(i => i.is_active !== false)) : 0
               const pct      = total > 0 ? count / total : 0
               const responseColor = pct >= 1 ? '#059669' : pct >= 0.5 ? '#D97706' : count > 0 ? 'var(--primary)' : 'var(--text-muted)'
               const responseBg    = pct >= 1 ? 'rgba(5,150,105,0.1)' : pct >= 0.5 ? 'rgba(217,119,6,0.1)' : count > 0 ? 'rgba(29,68,144,0.08)' : 'var(--bg-hover)'
@@ -657,7 +669,7 @@ export default function FeedbackAdminPage() {
                     {/* 강의평가 대상 온/오프 토글 */}
                     {row && (
                       <button
-                        onClick={e => { e.stopPropagation(); toggleFeedbackExclude(row) }}
+                        onClick={e => { e.stopPropagation(); toggleFeedbackExclude(rows) }}
                         title={isExcluded ? '강의평가 대상에서 제외됨 · 클릭해서 켜기' : '강의평가 대상 · 클릭해서 끄기'}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,

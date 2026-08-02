@@ -16,6 +16,12 @@ const Q_META = [
   { key: 'q5_practical'    as const, label: '실무활용' },
 ]
 
+/** date_label("8/3 월")을 날짜순으로 정렬하기 위한 숫자 키 — 문자열 정렬은 "8/10"이 "8/3"보다 앞에 오는 버그가 있어 사용 */
+function dateSortKey(label: string): number {
+  const m = label.match(/(\d+)\/(\d+)/)
+  return m ? Number(m[1]) * 100 + Number(m[2]) : 0
+}
+
 function avg(nums: number[]): number {
   const valid = nums.filter(n => n > 0)
   if (valid.length === 0) return 0
@@ -537,7 +543,7 @@ export default function FeedbackAdminPage() {
     lectureMap[fb.lecture_name].feedbacks.push(fb)
   }
 
-  const allDates = Array.from(new Set(scheduleRows.map(r => r.date_label))).sort()
+  const allDates = Array.from(new Set(scheduleRows.map(r => r.date_label))).sort((a, b) => dateSortKey(a) - dateSortKey(b))
 
   const filteredLectures = Object.entries(lectureMap)
     .filter(([, v]) => v.row !== undefined)

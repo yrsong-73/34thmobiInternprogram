@@ -7,13 +7,52 @@ import Nav from '@/components/Nav'
 
 const DEPARTMENTS = ['마케팅1팀','마케팅2팀','마케팅3팀','마케팅4팀','마케팅5팀','마케팅6팀','PM','CC','HRBP']
 
-// 날짜별 면담 가능 슬롯 (30분 단위)
-const DATE_SLOTS: Record<string, string[]> = {
-  '6/23 화': ['13:30~14:00','14:00~14:30','14:30~15:00','15:00~15:30','17:30~18:00','18:00~18:30','18:30~19:00'],
-  '6/24 수': ['10:30~11:00','11:00~11:30','11:30~12:00','14:30~15:00','15:00~15:30'],
-  '6/25 목': ['14:00~14:30','14:30~15:00'],
+// 30분 단위 그리드 (schedule 페이지와 동일한 기준 — 10:00~19:00)
+const GRID_TIMES = [
+  '10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30',
+  '15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00',
+]
+const TIME_INDEX: Record<string, number> = {}
+GRID_TIMES.forEach((t, i) => { TIME_INDEX[t] = i })
+
+function isMonOrTue(dateLabel: string): boolean {
+  return dateLabel.endsWith('월') || dateLabel.endsWith('화')
 }
-const ACTIVE_DATES = Object.keys(DATE_SLOTS)
+
+function dateSortKey(label: string): number {
+  const m = label.match(/(\d+)\/(\d+)/)
+  return m ? Number(m[1]) * 100 + Number(m[2]) : 0
+}
+
+interface ScheduleRowLite {
+  date_label: string
+  time: string
+  type: string
+  job_types: string[]
+}
+
+/** 시간표에서 "온라인" 또는 "자기주도" 강의가 있는 시간대를 면담 가능 슬롯으로 계산 (월/화 제외, 마케팅 대상 강의만) */
+function computeDateSlots(rows: ScheduleRowLite[]): Record<string, string[]> {
+  const byDate: Record<string, Set<string>> = {}
+  for (const r of rows) {
+    if (r.type !== 'online' && r.type !== 'self') continue
+    if (isMonOrTue(r.date_label)) continue
+    if (!r.job_types.includes('all') && !r.job_types.includes('marketing')) continue
+    const [start, end] = (r.time || '').split('~').map(s => s.trim())
+    const si = TIME_INDEX[start]
+    const ei = TIME_INDEX[end]
+    if (si === undefined || ei === undefined || ei <= si) continue
+    if (!byDate[r.date_label]) byDate[r.date_label] = new Set()
+    for (let i = si; i < ei; i++) {
+      byDate[r.date_label].add(`${GRID_TIMES[i]}~${GRID_TIMES[i + 1]}`)
+    }
+  }
+  const result: Record<string, string[]> = {}
+  for (const [date, slotSet] of Object.entries(byDate)) {
+    result[date] = Array.from(slotSet).sort()
+  }
+  return result
+}
 
 interface Interview {
   rowIndex: number
@@ -30,6 +69,7 @@ export default function InterviewPage() {
 
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [allInternsMkt, setAllInternsMkt] = useState<{ name: string; is_active: boolean }[]>([])
+  const [dateSlots, setDateSlots] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'intern' | 'leader'>('intern')
   const [selectedDept, setSelectedDept] = useState(DEPARTMENTS[0])
@@ -39,28 +79,37 @@ export default function InterviewPage() {
     .filter(i => role === 'CO1' || i.is_active)
     .map(i => i.name)
 
+  const activeDates = Object.keys(dateSlots).sort((a, b) => dateSortKey(a) - dateSortKey(b))
+
   // 면담 신청 폼
   const [fDept, setFDept] = useState(DEPARTMENTS[0])
   const [fIntern, setFIntern] = useState('')
-  const [fDate, setFDate] = useState(ACTIVE_DATES[0])
+  const [fDate, setFDate] = useState('')
   const [fTime, setFTime] = useState('')
   const [booking, setBooking] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [ivRes, intRes] = await Promise.all([
+      const [ivRes, intRes, schedRes] = await Promise.all([
         fetch('/api/interviews'),
         fetch('/api/interns'),
+        fetch('/api/schedule'),
       ])
       const ivData = await ivRes.json()
       const intData = await intRes.json()
+      const schedData = await schedRes.json()
       setInterviews(ivData.interviews || [])
       const mktAll = (intData.interns || [])
         .filter((i: any) => i.type === 'marketing')
         .map((i: any) => ({ name: i.name as string, is_active: i.is_active !== false }))
       setAllInternsMkt(mktAll)
       setFIntern(prev => prev || mktAll.find((i: { name: string; is_active: boolean }) => i.is_active)?.name || mktAll[0]?.name || '')
+
+      const slots = computeDateSlots(schedData.rows || [])
+      setDateSlots(slots)
+      const sortedDates = Object.keys(slots).sort((a, b) => dateSortKey(a) - dateSortKey(b))
+      setFDate(prev => (prev && slots[prev]) ? prev : (sortedDates[0] || ''))
     } finally {
       setLoading(false)
     }
@@ -140,7 +189,7 @@ export default function InterviewPage() {
   useEffect(() => { setFTime('') }, [fDate, fIntern])
 
   // 선택된 intern+date의 예약 가능 슬롯 (아직 예약 안 된 시간 전체)
-  const availableTimes = DATE_SLOTS[fDate]?.filter(t => {
+  const availableTimes = dateSlots[fDate]?.filter(t => {
     const rec = interviews.find(iv => iv.intern_name === fIntern && iv.date === fDate && iv.time_slot === t)
     return !rec || !rec.booked_by
   }) ?? []
@@ -159,8 +208,8 @@ export default function InterviewPage() {
   // ── 마케팅 인턴 기준 표 ──
   const InternTable = () => (
     <div>
-      {ACTIVE_DATES.map(date => {
-        const slots = DATE_SLOTS[date]
+      {activeDates.map(date => {
+        const slots = dateSlots[date]
         return (
           <div key={date} style={{ marginBottom: '28px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>{date}</h3>
@@ -207,6 +256,11 @@ export default function InterviewPage() {
       })}
       {internNames.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '14px' }}>마케팅 인턴이 등록되지 않았습니다</div>
+      )}
+      {activeDates.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '14px' }}>
+          시간표에 온라인/자기주도 강의(월·화 제외)가 없어 면담 가능한 날짜가 없습니다
+        </div>
       )}
     </div>
   )
@@ -300,7 +354,9 @@ export default function InterviewPage() {
               <div>
                 <label style={labelSt}>날짜</label>
                 <select value={fDate} onChange={e => setFDate(e.target.value)} style={selSt}>
-                  {ACTIVE_DATES.map(d => <option key={d} value={d}>{d}</option>)}
+                  {activeDates.length === 0
+                    ? <option value="">가능한 날짜 없음</option>
+                    : activeDates.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>

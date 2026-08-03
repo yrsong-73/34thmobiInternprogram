@@ -63,6 +63,12 @@ function rowToTime(row: number): string {
   return row === 19 ? '19:00' : GRID_SLOTS[row - 1]
 }
 
+/** date_label("8/7 금")을 날짜순으로 정렬하기 위한 숫자 키 — 문자열 정렬은 "8/10"이 "8/3"보다 앞에 오는 버그가 있어 사용 */
+function dateSortKey(label: string): number {
+  const m = label.match(/(\d+)\/(\d+)/)
+  return m ? Number(m[1]) * 100 + Number(m[2]) : 0
+}
+
 /** 드래그로 옮길 수 있는 강의인지 (웰컴런치/과제/특수값/파싱 불가 시간은 제외) */
 function isDraggableLecture(lec: ScheduleRow): boolean {
   if (lec.type === 'lunch' || lec.type === 'task') return false
@@ -916,7 +922,7 @@ export default function SchedulePage() {
 
   // ── 시간표 드래그(요일/시간 이동) ──────────────────────────
   const [dragRowIndex, setDragRowIndex]   = useState<number | null>(null)
-  const [dragOverCell, setDragOverCell]   = useState<{ dayNum: number; slotIndex: number } | null>(null)
+  const [dragOverCell, setDragOverCell]   = useState<{ dateLabel: string; slotIndex: number } | null>(null)
   const [savingDrag, setSavingDrag]       = useState(false)
 
   // ── 미리보기 모드: 전역 컨텍스트에서 읽기 ──────────────────
@@ -1082,10 +1088,12 @@ export default function SchedulePage() {
       if (r.week_num === 2 && r.week_variant && r.week_variant !== week2Variant) return false
       return r.job_types.includes('all') || r.job_types.includes(currentJob)
     })
-    const map = new Map<number, DayGroup>()
+    // day_num은 직무 트랙마다 값이 어긋날 수 있어(복사/분리로 검증됨) 신뢰할 수 없다 —
+    // 실제 같은 날인지 판단하는 기준은 date_label(실제 달력 날짜)로 묶는다.
+    const map = new Map<string, DayGroup>()
     filtered.forEach(r => {
-      if (!map.has(r.day_num)) {
-        map.set(r.day_num, {
+      if (!map.has(r.date_label)) {
+        map.set(r.date_label, {
           day_num:    r.day_num,
           day_label:  r.day_label,
           date_label: r.date_label,
@@ -1094,12 +1102,12 @@ export default function SchedulePage() {
           lectures:   [],
         })
       }
-      const g = map.get(r.day_num)!
+      const g = map.get(r.date_label)!
       if (r.eval_link && !g.eval_link) g.eval_link = r.eval_link
       g.lectures.push(r)
     })
     map.forEach(g => g.lectures.sort((a, b) => a.time.localeCompare(b.time)))
-    return Array.from(map.values()).sort((a, b) => a.day_num - b.day_num)
+    return Array.from(map.values()).sort((a, b) => dateSortKey(a.date_label) - dateSortKey(b.date_label))
   })()
 
   // 일반 체크박스 토글 (task 제외)
@@ -1196,14 +1204,14 @@ export default function SchedulePage() {
 
   /** 드래그로 강의를 다른 요일/시간 칸에 떨어뜨렸을 때 — rowIndex는 절대 바꾸지 않고
    *  같은 행의 day_num/day_label/date_label/eval_label/time 값만 갱신한다 */
-  function handleReschedule(targetDayNum: number, targetSlotIndex: number) {
+  function handleReschedule(targetDateLabel: string, targetSlotIndex: number) {
     if (!effectiveIsCO1 || savingDrag || dragRowIndex == null) return
     const draggedRowIndex = dragRowIndex
     setDragRowIndex(null)
     setDragOverCell(null)
 
     const lec = allRows.find(r => r.rowIndex === draggedRowIndex)
-    const targetDay = dayGroups.find(d => d.day_num === targetDayNum)
+    const targetDay = dayGroups.find(d => d.date_label === targetDateLabel)
     if (!lec || !targetDay) return
 
     const rows = parseRows(lec.time)
@@ -1217,7 +1225,7 @@ export default function SchedulePage() {
     }
 
     const newTime = `${rowToTime(newSr)}~${rowToTime(newEr)}`
-    if (lec.day_num === targetDay.day_num && lec.time === newTime) return // 제자리 드롭
+    if (lec.date_label === targetDay.date_label && lec.time === newTime) return // 제자리 드롭
 
     const snapshot = allRows
     const updatedLec: ScheduleRow = {
@@ -1538,7 +1546,7 @@ export default function SchedulePage() {
             }}>
               <div style={{ padding: '10px 6px', textAlign: 'center', fontSize: '10.5px', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>시간</div>
               {dayGroups.map(day => (
-                <div key={day.day_num} style={{ padding: '10px 8px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                <div key={day.date_label} style={{ padding: '10px 8px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
                   <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', fontWeight: 500 }}>{day.day_label}</div>
                   <div style={{ color: '#fff', fontSize: '13px', fontWeight: 700, marginTop: '1px' }}>{day.date_label}</div>
                   <div style={{ marginTop: '4px', display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1586,7 +1594,7 @@ export default function SchedulePage() {
               {dayGroups.map((day, di) =>
                 GRID_SLOTS.map((t, i) => {
                   const isLunch = t === '12:00' || t === '12:30'
-                  const isDragOver = dragRowIndex != null && dragOverCell?.dayNum === day.day_num && dragOverCell?.slotIndex === i
+                  const isDragOver = dragRowIndex != null && dragOverCell?.dateLabel === day.date_label && dragOverCell?.slotIndex === i
                   return (
                     <div
                       key={`bg-${di}-${i}`}
@@ -1599,8 +1607,8 @@ export default function SchedulePage() {
                         outlineOffset: isDragOver ? '-2px' : undefined,
                         boxSizing: 'border-box' as const,
                       }}
-                      onDragOver={e => { if (dragRowIndex != null) { e.preventDefault(); setDragOverCell({ dayNum: day.day_num, slotIndex: i }) } }}
-                      onDrop={e => { e.preventDefault(); handleReschedule(day.day_num, i) }}
+                      onDragOver={e => { if (dragRowIndex != null) { e.preventDefault(); setDragOverCell({ dateLabel: day.date_label, slotIndex: i }) } }}
+                      onDrop={e => { e.preventDefault(); handleReschedule(day.date_label, i) }}
                     />
                   )
                 })
@@ -1691,8 +1699,8 @@ export default function SchedulePage() {
                           setDragRowIndex(lec.rowIndex)
                         }}
                         onDragEnd={() => { setDragRowIndex(null); setDragOverCell(null) }}
-                        onDragOver={e => { if (dragRowIndex != null) { e.preventDefault(); e.stopPropagation(); setDragOverCell({ dayNum: day.day_num, slotIndex: sr - 1 }) } }}
-                        onDrop={e => { if (dragRowIndex != null) { e.preventDefault(); e.stopPropagation(); handleReschedule(day.day_num, sr - 1) } }}
+                        onDragOver={e => { if (dragRowIndex != null) { e.preventDefault(); e.stopPropagation(); setDragOverCell({ dateLabel: day.date_label, slotIndex: sr - 1 }) } }}
+                        onDrop={e => { if (dragRowIndex != null) { e.preventDefault(); e.stopPropagation(); handleReschedule(day.date_label, sr - 1) } }}
                         style={{
                           gridColumn: di + 2,
                           gridRow: `${sr} / ${er}`,
@@ -1864,7 +1872,7 @@ export default function SchedulePage() {
                 const allFeedbackDone = offlineLectures.length > 0 && doneFeedbacks.length === offlineLectures.length
 
                 return (
-                  <div key={day.day_num} style={{
+                  <div key={day.date_label} style={{
                     borderLeft: '1px solid var(--border)',
                     padding: '8px 10px',
                     display: 'flex', flexDirection: 'column', gap: '5px',

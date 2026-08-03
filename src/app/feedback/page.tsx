@@ -563,8 +563,9 @@ export default function FeedbackAdminPage() {
       const aExcluded = a[1].rows.every(r => r.feedback_exclude) ? 1 : 0
       const bExcluded = b[1].rows.every(r => r.feedback_exclude) ? 1 : 0
       if (aExcluded !== bExcluded) return aExcluded - bExcluded
-      const aDay = a[1].rows[0]?.day_num ?? 99
-      const bDay = b[1].rows[0]?.day_num ?? 99
+      // day_num은 직무 트랙마다 값이 어긋날 수 있어(schedule 페이지와 동일한 이유) 실제 날짜(date_label) 기준으로 정렬
+      const aDay = dateSortKey(a[1].rows[0]?.date_label ?? '')
+      const bDay = dateSortKey(b[1].rows[0]?.date_label ?? '')
       if (aDay !== bDay) return aDay - bDay
       return (a[1].rows[0]?.time ?? '').localeCompare(b[1].rows[0]?.time ?? '')
     })

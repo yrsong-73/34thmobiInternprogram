@@ -120,6 +120,27 @@ export default function Nav() {
 
         {/* 우측: 사용자 */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isCO1Real && (
+            <button
+              onClick={() => setPreviewMode(previewMode === 'intern' ? 'off' : 'intern')}
+              title="켜면 인턴이 보는 화면(시간표·공지)으로 전환됩니다"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s',
+                border: previewMode === 'intern' ? 'none' : '1px solid var(--border)',
+                background: previewMode === 'intern' ? '#6366F1' : '#fff',
+                color: previewMode === 'intern' ? '#fff' : 'var(--text-secondary)',
+              }}
+            >
+              🎓 교육모드{previewMode === 'intern' ? ' ON' : ''}
+            </button>
+          )}
           <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{userName}</span>
           <span style={{
             fontSize: '11px',

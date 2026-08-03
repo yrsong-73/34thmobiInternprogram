@@ -733,9 +733,22 @@ export async function updateScheduleAssignment(
 
 const KOREAN_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
+/** 시작일(영업일 1일차)로부터 영업일(월~금) 기준으로 n일 뒤 날짜를 계산 — 주말은 건너뛴다 */
+function addBusinessDays(start: Date, businessDaysToAdd: number): Date {
+  const d = new Date(start)
+  let added = 0
+  while (added < businessDaysToAdd) {
+    d.setDate(d.getDate() + 1)
+    const dow = d.getDay()
+    if (dow !== 0 && dow !== 6) added++
+  }
+  return d
+}
+
 /**
  * 새 시작일을 기준으로 전체 시간표의 date_label만 재계산해서 일괄 갱신한다
  * (day_label의 "N일차" 숫자로 새 날짜를 계산 — day_num은 트랙마다 값이 달라 신뢰할 수 없어 사용하지 않음).
+ * 교육은 평일(월~금)에만 진행되므로 주말은 건너뛰고 다음 영업일로 이어서 계산한다.
  * date_label 컬럼(D열)만 건드리고 다른 필드는 전혀 손대지 않는다.
  */
 export async function rescheduleDates(newStartDate: string): Promise<{ updated: number; skipped: number }> {
@@ -748,8 +761,7 @@ export async function rescheduleDates(newStartDate: string): Promise<{ updated: 
     const match = row.day_label.match(/(\d+)/)
     if (!match) { skipped++; continue }
     const dayNum = Number(match[1])
-    const d = new Date(start)
-    d.setDate(d.getDate() + (dayNum - 1))
+    const d = addBusinessDays(start, dayNum - 1)
     const newLabel = `${d.getMonth() + 1}/${d.getDate()} ${KOREAN_WEEKDAYS[d.getDay()]}`
     if (newLabel !== row.date_label) {
       data.push({ range: `schedule!D${row.rowIndex}`, values: [[newLabel]] })

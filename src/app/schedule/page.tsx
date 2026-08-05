@@ -966,28 +966,26 @@ export default function SchedulePage() {
   // 인턴 본인 면담 일정 로드
   useEffect(() => {
     if (status !== 'authenticated') return
-    // 실제 인턴 또는 인턴 미리보기 모드에서만
-    const name = isIntern ? null : (internPreviewActive ? previewInternName : null)
-    if (!isIntern && !name) { setMyInterviews([]); return }
-    const url = name ? `/api/interviews?internName=${encodeURIComponent(name)}` : '/api/interviews/me'
     if (isIntern) {
-      // 인턴 본인: /api/interviews/me 대신 자신의 이름으로 조회하려면 me 엔드포인트 필요
-      // 일단 모든 면담 불러와 booked 슬롯만 표시
-      fetch('/api/interviews')
+      // 인턴 본인: CO1/Member 전용 관리 API(/api/interviews)는 건드리지 않고,
+      // 본인 것만 조회 가능한 전용 엔드포인트 사용
+      fetch('/api/interviews/me')
+        .then(r => r.json())
+        .then(d => setMyInterviews(d.interviews || []))
+        .catch(() => {})
+      return
+    }
+    // CO1/Member의 인턴 미리보기 모드에서만 해당 인턴 것을 조회 (실제 세션 권한 그대로 사용)
+    if (internPreviewActive && previewInternName) {
+      fetch(`/api/interviews?internName=${encodeURIComponent(previewInternName)}`)
         .then(r => r.json())
         .then(d => {
           const booked = (d.interviews || []).filter((iv: any) => iv.booked_by)
           setMyInterviews(booked)
         })
         .catch(() => {})
-    } else if (name) {
-      fetch(`/api/interviews?internName=${encodeURIComponent(name)}`)
-        .then(r => r.json())
-        .then(d => {
-          const booked = (d.interviews || []).filter((iv: any) => iv.booked_by)
-          setMyInterviews(booked)
-        })
-        .catch(() => {})
+    } else {
+      setMyInterviews([])
     }
   }, [isIntern, status, internPreviewActive, previewInternName])
 

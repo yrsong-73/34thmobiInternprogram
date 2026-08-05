@@ -12,16 +12,7 @@ function isCoOrMember(role: string) {
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const role     = (session.user as any)?.role as string
-  const userName = (session.user as any)?.userName || session.user?.name || ''
-
-  // 인턴 본인은 CO1/Member가 아니어도 자기 자신의 면담 일정만 조회 가능 (쿼리 파라미터로 남을 조회 불가)
-  if (role === 'Intern') {
-    const all = await getInterviews()
-    const filtered = all.filter(r => r.intern_name === userName)
-    return NextResponse.json({ interviews: filtered })
-  }
-
+  const role = (session.user as any)?.role as string
   if (!isCoOrMember(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { searchParams } = new URL(req.url)

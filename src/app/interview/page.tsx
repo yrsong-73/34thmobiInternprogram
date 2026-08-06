@@ -83,7 +83,7 @@ export default function InterviewPage() {
 
   // 면담 신청 폼
   const [fDept, setFDept] = useState(DEPARTMENTS[0])
-  const [fIntern, setFIntern] = useState('')
+  const [fInterns, setFInterns] = useState<string[]>([])
   const [fDate, setFDate] = useState('')
   const [fTime, setFTime] = useState('')
   const [booking, setBooking] = useState(false)
@@ -104,7 +104,6 @@ export default function InterviewPage() {
         .filter((i: any) => i.type === 'marketing')
         .map((i: any) => ({ name: i.name as string, is_active: i.is_active !== false }))
       setAllInternsMkt(mktAll)
-      setFIntern(prev => prev || mktAll.find((i: { name: string; is_active: boolean }) => i.is_active)?.name || mktAll[0]?.name || '')
 
       const slots = computeDateSlots(schedData.rows || [])
       setDateSlots(slots)
@@ -125,52 +124,50 @@ export default function InterviewPage() {
 
   const canEdit = role === 'CO1' || role === 'Member'
 
-  // 면담 신청 폼 제출
-  async function submitBook() {
-    if (!fDept || !fIntern || !fDate || !fTime) return
-    setBooking(true)
+  // 인턴 한 명 예약 (기존 슬롯 있으면 PATCH, 없으면 생성 후 PATCH) — 그룹 신청 시 선택된 인턴마다 반복 호출
+  async function bookOne(internName: string): Promise<boolean> {
     const record = interviews.find(iv =>
-      iv.intern_name === fIntern && iv.date === fDate && iv.time_slot === fTime
+      iv.intern_name === internName && iv.date === fDate && iv.time_slot === fTime
     )
     if (record) {
-      // 기존 슬롯 예약
       const res = await fetch('/api/interviews', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rowIndex: record.rowIndex, booked_by: fDept }),
       })
-      if (!res.ok) {
-        const d = await res.json()
-        alert(d.error || '예약 실패')
-        setBooking(false)
-        return
-      }
-    } else {
-      // 슬롯 없으면 자동 생성 후 예약 (CO1+Member 모두)
-      await fetch('/api/interviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intern_name: fIntern, date: fDate, time_slot: fTime }),
-      })
-      const all = await (await fetch('/api/interviews')).json()
-      const newRec = (all.interviews as Interview[]).find(iv =>
-        iv.intern_name === fIntern && iv.date === fDate && iv.time_slot === fTime
-      )
-      if (newRec) {
-        const res = await fetch('/api/interviews', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: newRec.rowIndex, booked_by: fDept }),
-        })
-        if (!res.ok) {
-          const d = await res.json()
-          alert(d.error || '예약 실패')
-          setBooking(false)
-          return
-        }
-      }
+      return res.ok
     }
-    setFTime('')
+    await fetch('/api/interviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intern_name: internName, date: fDate, time_slot: fTime }),
+    })
+    const all = await (await fetch('/api/interviews')).json()
+    const newRec = (all.interviews as Interview[]).find(iv =>
+      iv.intern_name === internName && iv.date === fDate && iv.time_slot === fTime
+    )
+    if (!newRec) return false
+    const res = await fetch('/api/interviews', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex: newRec.rowIndex, booked_by: fDept }),
+    })
+    return res.ok
+  }
+
+  // 면담 신청 폼 제출 — 선택된 인턴 전원에게 같은 날짜/시간으로 그룹 면담 예약
+  async function submitBook() {
+    if (!fDept || !fDate || !fTime || fInterns.length === 0) return
+    setBooking(true)
+    const failed: string[] = []
+    for (const name of fInterns) {
+      const ok = await bookOne(name)
+      if (!ok) failed.push(name)
+    }
+    if (failed.length > 0) {
+      alert(`다음 인턴은 예약에 실패했습니다 (다른 리더가 먼저 예약했을 수 있어요): ${failed.join(', ')}`)
+    }
+    setFInterns([])
     await fetchData()
     setBooking(false)
   }
@@ -185,14 +182,13 @@ export default function InterviewPage() {
     await fetchData()
   }
 
-  // fDate 변경 시 fTime 초기화
-  useEffect(() => { setFTime('') }, [fDate, fIntern])
+  // fDate 변경 시 fTime/선택 인턴 초기화
+  useEffect(() => { setFTime(''); setFInterns([]) }, [fDate])
+  useEffect(() => { setFInterns([]) }, [fTime])
 
-  // 선택된 intern+date의 예약 가능 슬롯 (아직 예약 안 된 시간 전체)
-  const availableTimes = dateSlots[fDate]?.filter(t => {
-    const rec = interviews.find(iv => iv.intern_name === fIntern && iv.date === fDate && iv.time_slot === t)
-    return !rec || !rec.booked_by
-  }) ?? []
+  function toggleFIntern(name: string) {
+    setFInterns(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name])
+  }
 
   if (status === 'loading' || loading) {
     return (
@@ -336,19 +332,11 @@ export default function InterviewPage() {
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
               📅 면담 신청
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '14px' }}>
               <div>
                 <label style={labelSt}>신청 부서</label>
                 <select value={fDept} onChange={e => setFDept(e.target.value)} style={selSt}>
                   {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelSt}>인턴 선택</label>
-                <select value={fIntern} onChange={e => setFIntern(e.target.value)} style={selSt}>
-                  {internNames.length === 0
-                    ? <option value="">인턴 없음</option>
-                    : internNames.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
               <div>
@@ -365,26 +353,70 @@ export default function InterviewPage() {
                   value={fTime}
                   onChange={e => setFTime(e.target.value)}
                   style={{ ...selSt, color: fTime ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                  disabled={availableTimes.length === 0}
+                  disabled={!fDate || (dateSlots[fDate]?.length ?? 0) === 0}
                 >
-                  <option value="">{availableTimes.length === 0 ? '예약 가능 슬롯 없음' : '시간 선택'}</option>
-                  {availableTimes.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="">{!fDate ? '날짜를 먼저 선택' : '시간 선택'}</option>
+                  {(dateSlots[fDate] ?? []).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <button
                 onClick={submitBook}
-                disabled={!fTime || !fIntern || booking}
+                disabled={!fTime || fInterns.length === 0 || booking}
                 style={{
                   padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-                  cursor: fTime && fIntern && !booking ? 'pointer' : 'not-allowed',
+                  cursor: fTime && fInterns.length > 0 && !booking ? 'pointer' : 'not-allowed',
                   fontFamily: 'inherit', border: 'none', transition: 'all 0.15s',
-                  background: fTime && fIntern && !booking ? 'var(--primary)' : '#e5e7eb',
-                  color: fTime && fIntern && !booking ? '#fff' : '#9ca3af',
+                  background: fTime && fInterns.length > 0 && !booking ? 'var(--primary)' : '#e5e7eb',
+                  color: fTime && fInterns.length > 0 && !booking ? '#fff' : '#9ca3af',
                 }}
               >
-                {booking ? '신청 중...' : '신청하기'}
+                {booking ? '신청 중...' : fInterns.length > 1 ? `${fInterns.length}명 그룹 신청하기` : '신청하기'}
               </button>
             </div>
+
+            {/* 인턴 선택 — 날짜/시간을 고른 뒤에만 표시 */}
+            {!fDate || !fTime ? (
+              <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                날짜·시간을 먼저 선택하면 예약 가능한 인턴 목록이 표시됩니다
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)', marginBottom: '8px' }}>
+                  👥 인턴 선택 (복수 선택 가능 · 여러 명 선택 시 그룹 면담으로 함께 진행됩니다)
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {internNames.map(name => {
+                    const rec = interviews.find(iv => iv.intern_name === name && iv.date === fDate && iv.time_slot === fTime && iv.booked_by)
+                    const taken = !!rec
+                    const checked = fInterns.includes(name)
+                    return (
+                      <label key={name} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: '6px 12px', borderRadius: '20px', fontSize: '12.5px', fontWeight: 600,
+                        cursor: taken ? 'not-allowed' : 'pointer',
+                        border: `1.5px solid ${taken ? 'var(--border)' : checked ? 'var(--primary)' : 'var(--border-strong)'}`,
+                        background: taken ? 'var(--bg-hover)' : checked ? 'rgba(29,68,144,0.08)' : '#fff',
+                        color: taken ? 'var(--text-muted)' : checked ? 'var(--primary)' : 'var(--text-secondary)',
+                        opacity: taken ? 0.7 : 1,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={taken}
+                          onChange={() => toggleFIntern(name)}
+                          style={{ cursor: taken ? 'not-allowed' : 'pointer' }}
+                        />
+                        {name}
+                        {taken && <span style={{ fontSize: '10.5px', fontWeight: 700 }}>· 이미 예약됨 ({rec!.booked_by})</span>}
+                      </label>
+                    )
+                  })}
+                  {internNames.length === 0 && (
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>마케팅 인턴이 등록되지 않았습니다</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -385,6 +385,7 @@ export async function getSettings(): Promise<AppSettings> {
     job_visible_biz:        map['job_visible_biz']        !== 'false',
     job_visible_cc:         map['job_visible_cc']         !== 'false',
     week_2_visible:         map['week_2_visible']         === 'true',
+    week2_active_variant:   map['week2_active_variant']   === 'B' ? 'B' : 'A',
     related_link_1_label:  map['related_link_1_label']  || '',
     related_link_1_url:    map['related_link_1_url']    || '',
     related_link_2_label:  map['related_link_2_label']  || '',

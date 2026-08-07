@@ -1027,6 +1027,7 @@ export default function SchedulePage() {
         cc:        settings?.job_visible_cc        !== false,
       })
       setWeek2Visible(settings?.week_2_visible !== false)
+      setWeek2Variant(settings?.week2_active_variant === 'B' ? 'B' : 'A')
     } finally {
       setLoading(false)
     }
@@ -1274,6 +1275,22 @@ export default function SchedulePage() {
     }
   }
 
+  async function toggleWeek2Variant(v: 'A' | 'B') {
+    if (v === week2Variant) return
+    const prev = week2Variant
+    setWeek2Variant(v)
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week2_active_variant: v }),
+      })
+    } catch {
+      setWeek2Variant(prev)
+      showToast('⚠️ 저장 실패. 다시 시도해주세요.')
+    }
+  }
+
   async function toggleWeek2Visible() {
     const newVal = !week2Visible
     setWeek2Visible(newVal)
@@ -1462,10 +1479,10 @@ export default function SchedulePage() {
             )
           })}
           {currentWeek === 2 && effectiveIsCO1 && (
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>버전</span>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }} title="실제 진행 중인 버전 — 인턴 화면·수강체크율 계산에 반영됩니다">
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>진행 버전</span>
               {(['A', 'B'] as const).map(v => (
-                <button key={v} onClick={() => setWeek2Variant(v)}
+                <button key={v} onClick={() => toggleWeek2Variant(v)}
                   style={{
                     padding: '6px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
                     cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',

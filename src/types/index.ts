@@ -167,6 +167,7 @@ export interface AppSettings {
   job_visible_biz: boolean
   job_visible_cc: boolean
   week_2_visible: boolean
+  week2_active_variant: 'A' | 'B'  // 2주차 A/B 버전 중 실제로 진행 중인 버전 — 수강체크율 분모 계산 기준
   related_link_1_label: string  // 대시보드 "관련 자료 링크" 1번 (기수별로 다름)
   related_link_1_url: string
   related_link_2_label: string // 대시보드 "관련 자료 링크" 2번

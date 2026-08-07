@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { getScheduleRows, getAllCompletions, getUserPermissions } from '@/lib/sheets'
+import { getScheduleRows, getAllCompletions, getUserPermissions, getSettings } from '@/lib/sheets'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -18,9 +18,14 @@ export async function GET() {
 
   try {
     // 1. 수강체크율 분모: count_for_rate = y 인 rowIndex 목록
-    const scheduleRows = await getScheduleRows()
+    // 2주차는 A/B 버전 중 실제 진행 중인 버전(week2_active_variant)만 포함 —
+    // 안 그러면 진행 안 하는 버전의 강의까지 분모에 섞여 체크율이 실제보다 낮게 나온다.
+    const [scheduleRows, settings] = await Promise.all([getScheduleRows(), getSettings()])
     const denominatorSet = new Set(
-      scheduleRows.filter(r => r.count_for_rate).map(r => r.rowIndex)
+      scheduleRows
+        .filter(r => r.count_for_rate)
+        .filter(r => r.week_num !== 2 || !r.week_variant || r.week_variant === settings.week2_active_variant)
+        .map(r => r.rowIndex)
     )
     const denominator = denominatorSet.size
 

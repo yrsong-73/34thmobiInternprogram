@@ -435,6 +435,10 @@ export default function FeedbackAdminPage() {
   const [expanded, setExpanded]             = useState<string | null>(null)
   const [filterDay, setFilterDay]           = useState<string>('all')
   const [co1Target, setCO1Target]           = useState<ScheduleRow | null>(null)
+  const [aiSummaries, setAiSummaries]       = useState<Record<string, string>>({})
+  const [summarizingLecture, setSummarizingLecture] = useState<string | null>(null)
+  const [overallSummary, setOverallSummary]         = useState<string | null>(null)
+  const [summarizingOverall, setSummarizingOverall] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
@@ -536,6 +540,53 @@ export default function FeedbackAdminPage() {
     }
   }
 
+  function feedbackToLines(f: LectureFeedback, withLectureName: boolean): string[] {
+    const prefix = withLectureName ? `[${f.lecture_name}] ` : ''
+    const lines: string[] = []
+    if (f.q7_helpful?.trim())     lines.push(`${prefix}도움된 점: ${f.q7_helpful.trim()}`)
+    if (f.q8_difficult?.trim())   lines.push(`${prefix}어려웠던 점: ${f.q8_difficult.trim()}`)
+    if (f.q9_improvement?.trim()) lines.push(`${prefix}개선 요청: ${f.q9_improvement.trim()}`)
+    return lines
+  }
+
+  async function summarizeLecture(lectureName: string, lFbs: LectureFeedback[]) {
+    if (summarizingLecture) return
+    setSummarizingLecture(lectureName)
+    const records = lFbs.flatMap(f => feedbackToLines(f, false))
+    try {
+      const res = await fetch('/api/feedbacks/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: lectureName, records }),
+      })
+      const d = await res.json()
+      if (res.ok) setAiSummaries(prev => ({ ...prev, [lectureName]: d.summary }))
+      else alert(d.error || 'AI 요약에 실패했습니다')
+    } catch {
+      alert('AI 요약에 실패했습니다')
+    }
+    setSummarizingLecture(null)
+  }
+
+  async function summarizeAll() {
+    if (summarizingOverall) return
+    setSummarizingOverall(true)
+    const records = feedbacks.flatMap(f => feedbackToLines(f, true))
+    try {
+      const res = await fetch('/api/feedbacks/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: '전체 강의', records }),
+      })
+      const d = await res.json()
+      if (res.ok) setOverallSummary(d.summary)
+      else alert(d.error || 'AI 요약에 실패했습니다')
+    } catch {
+      alert('AI 요약에 실패했습니다')
+    }
+    setSummarizingOverall(false)
+  }
+
   if (status === 'loading' || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'var(--text-muted)' }}>불러오는 중...</div>
@@ -575,10 +626,37 @@ export default function FeedbackAdminPage() {
       <Nav />
       <main style={{ padding: '32px', maxWidth: '1000px', margin: '0 auto' }}>
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 강의 피드백 집계</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-            오프라인·온라인 강의 {filteredLectures.length}개 · 인턴 응답 {feedbacks.length}건
-          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.5px', marginBottom: '6px' }}>📊 강의 피드백 집계</h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
+                오프라인·온라인 강의 {filteredLectures.length}개 · 인턴 응답 {feedbacks.length}건
+              </p>
+            </div>
+            <button
+              onClick={summarizeAll}
+              disabled={summarizingOverall || feedbacks.length === 0}
+              style={{
+                padding: '8px 16px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700,
+                cursor: summarizingOverall || feedbacks.length === 0 ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit', border: 'none', whiteSpace: 'nowrap',
+                background: summarizingOverall || feedbacks.length === 0 ? '#e5e7eb' : 'var(--mobi-dark)',
+                color: summarizingOverall || feedbacks.length === 0 ? '#9ca3af' : '#fff',
+              }}
+            >
+              {summarizingOverall ? '🤖 요약 중...' : '🤖 전체 요약 보기'}
+            </button>
+          </div>
+
+          {overallSummary && (
+            <div style={{ marginTop: '14px', background: '#F0F4FF', border: '1px solid rgba(29,68,144,0.2)', borderRadius: '12px', padding: '14px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#1D4490' }}>🤖 전체 강의 AI 요약</span>
+                <button onClick={() => setOverallSummary(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>닫기</button>
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{overallSummary}</div>
+            </div>
+          )}
         </div>
 
         {/* 날짜 필터 */}
@@ -774,6 +852,30 @@ export default function FeedbackAdminPage() {
                               </div>
                             )
                           })}
+
+                          {/* AI 요약 */}
+                          <div style={{ marginTop: '4px' }}>
+                            <button
+                              onClick={() => summarizeLecture(lectureName, lFbs)}
+                              disabled={summarizingLecture === lectureName}
+                              style={{
+                                padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
+                                cursor: summarizingLecture === lectureName ? 'not-allowed' : 'pointer',
+                                fontFamily: 'inherit', transition: 'all 0.15s',
+                                border: '1.5px solid var(--mobi-dark)',
+                                background: summarizingLecture === lectureName ? 'var(--bg-hover)' : '#fff',
+                                color: 'var(--mobi-dark)',
+                              }}
+                            >
+                              {summarizingLecture === lectureName ? '🤖 요약 중...' : aiSummaries[lectureName] ? '🤖 AI 요약 다시 만들기' : '🤖 AI 요약 보기'}
+                            </button>
+                            {aiSummaries[lectureName] && (
+                              <div style={{ marginTop: '10px', background: '#F0F4FF', border: '1px solid rgba(29,68,144,0.2)', borderRadius: '12px', padding: '12px 16px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#1D4490', marginBottom: '6px' }}>🤖 AI 요약</div>
+                                <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{aiSummaries[lectureName]}</div>
+                              </div>
+                            )}
+                          </div>
                         </>
                       )}
 

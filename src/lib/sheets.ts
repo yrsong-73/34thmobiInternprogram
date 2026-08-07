@@ -1012,6 +1012,49 @@ export async function upsertFeedback(data: Omit<LectureFeedback, 'rowIndex'>): P
 }
 
 // ──────────────────────────────────────────────
+// AI 요약 결과 캐시 (ai_summaries 시트)
+// 강의별 요약은 key=강의명, 전체 요약은 key='__overall__'로 저장 —
+// 매번 다시 생성하면 API 비용이 계속 드니 한 번 만든 결과는 재사용한다.
+// ──────────────────────────────────────────────
+
+async function ensureAiSummariesSheet(): Promise<void> {
+  const sheets = getSheets()
+  const spreadsheetId = await getActiveSheetId()
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId })
+  const exists = spreadsheet.data.sheets?.some(s => s.properties?.title === 'ai_summaries')
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: 'ai_summaries' } } }] },
+    })
+    await appendRow('ai_summaries', ['key', 'summary', 'generated_at'])
+  }
+}
+
+export async function getAiSummaries(): Promise<Record<string, { summary: string; generatedAt: string }>> {
+  try {
+    const rows = await readSheet('ai_summaries!A2:C')
+    const map: Record<string, { summary: string; generatedAt: string }> = {}
+    for (const r of rows) {
+      if (r[0]) map[r[0]] = { summary: r[1] || '', generatedAt: r[2] || '' }
+    }
+    return map
+  } catch { return {} }
+}
+
+export async function upsertAiSummary(key: string, summary: string): Promise<void> {
+  await ensureAiSummariesSheet()
+  const rows = await readSheet('ai_summaries!A2:C')
+  const idx = rows.findIndex(r => r[0] === key)
+  const values = [key, summary, new Date().toISOString()]
+  if (idx >= 0) {
+    await updateRow('ai_summaries', idx + 2, values)
+  } else {
+    await appendRow('ai_summaries', values)
+  }
+}
+
+// ──────────────────────────────────────────────
 // CO1 강사 평가 (co1_feedbacks 시트)
 // ──────────────────────────────────────────────
 

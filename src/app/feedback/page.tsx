@@ -453,9 +453,19 @@ export default function FeedbackAdminPage() {
       fetch('/api/interns').then(r => r.json()),
       fetch('/api/settings').then(r => r.json()),
       fetch('/api/co1-feedbacks').then(r => r.json()),
-    ]).then(([fbData, schedData, internsData, settingsData, co1Data]) => {
+      fetch('/api/feedbacks/summarize').then(r => r.json()).catch(() => ({})),
+    ]).then(([fbData, schedData, internsData, settingsData, co1Data, summaryData]) => {
       setFeedbacks(fbData.feedbacks ?? [])
       setInterns(internsData.interns ?? [])
+
+      // 저장된 AI 요약 불러오기 — 이미 만들어둔 게 있으면 다시 생성(=API 비용)하지 않고 그대로 표시
+      const savedSummaries: Record<string, { summary: string; generatedAt: string }> = summaryData?.summaries ?? {}
+      const lectureSummaries: Record<string, string> = {}
+      for (const [key, v] of Object.entries(savedSummaries)) {
+        if (key === '__overall__') setOverallSummary(v.summary)
+        else lectureSummaries[key] = v.summary
+      }
+      setAiSummaries(lectureSummaries)
 
       // CO1 강사 평가: 본인 것 + 전체 건수 + 강의별 전체 목록
       const allCO1: CO1Feedback[] = co1Data.feedbacks ?? []

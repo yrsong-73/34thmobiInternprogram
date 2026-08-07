@@ -174,8 +174,11 @@ async function clearRow(sheetName: string, rowIndex: number): Promise<void> {
 // ──────────────────────────────────────────────
 // 인턴 목록 (interns 시트)
 // 컬럼: name | job | type | mbti | age | school | career |
-//       score_mini | score_test | score_attitude | attend_rate | assign_rate | summary |
-//       test_top | test_bottom
+//       score_mini | score_test | test_top | test_bottom | score_attitude |
+//       attend_rate | assign_rate | summary |
+//       final_summary | final_summary_public | is_active | attend_note
+// (실제 시트 컬럼 순서 기준 — 코드가 이 순서와 어긋나면 값이 엉뚱한 필드로 읽히거나
+//  저장 시 다른 컬럼 데이터를 덮어쓰므로, 시트에서 컬럼을 추가/이동할 땐 반드시 여기도 같이 맞출 것)
 // ──────────────────────────────────────────────
 
 function jobToType(job: string): 'marketing' | 'aiax' | 'biz' | 'cc' {
@@ -199,12 +202,12 @@ export async function getInterns(): Promise<Intern[]> {
       career:               r[6] || '',
       score_mini:           Number(r[7]) || 0,
       score_test:           Number(r[8]) || 0,
-      score_attitude:       Number(r[9]) || 0,
-      attend_rate:          Number(r[10]) || 0,
-      assign_rate:          Number(r[11]) || 0,
-      summary:              r[12] || '',
-      test_top:             r[13] || '',
-      test_bottom:          r[14] || '',
+      test_top:             r[9] || '',
+      test_bottom:          r[10] || '',
+      score_attitude:       Number(r[11]) || 0,
+      attend_rate:          Number(r[12]) || 0,
+      assign_rate:          Number(r[13]) || 0,
+      summary:              r[14] || '',
       final_summary:        r[15] || '',
       final_summary_public: r[16]?.toLowerCase() === 'true',
       is_active:            r[17] === undefined || r[17] === '' || r[17]?.toLowerCase() !== 'false',
@@ -226,12 +229,12 @@ export async function updateIntern(rowIndex: number, data: Partial<Intern>): Pro
     data.career           ?? existing[6]  ?? '',
     data.score_mini       ?? existing[7]  ?? '',
     data.score_test       ?? existing[8]  ?? '',
-    data.score_attitude   ?? existing[9]  ?? '',
-    data.attend_rate      ?? existing[10] ?? '',
-    data.assign_rate      ?? existing[11] ?? '',
-    data.summary          ?? existing[12] ?? '',
-    data.test_top         ?? existing[13] ?? '',
-    data.test_bottom      ?? existing[14] ?? '',
+    data.test_top         ?? existing[9]  ?? '',
+    data.test_bottom      ?? existing[10] ?? '',
+    data.score_attitude   ?? existing[11] ?? '',
+    data.attend_rate      ?? existing[12] ?? '',
+    data.assign_rate      ?? existing[13] ?? '',
+    data.summary          ?? existing[14] ?? '',
     data.final_summary          !== undefined ? data.final_summary          : (existing[15] ?? ''),
     data.final_summary_public   !== undefined ? (data.final_summary_public ? 'true' : '') : (existing[16] ?? ''),
     data.is_active              !== undefined ? (data.is_active ? 'true' : 'false')       : (existing[17] ?? ''),

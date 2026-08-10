@@ -23,9 +23,13 @@ export async function GET() {
       getUserPermissions(),
     ])
 
-    // rowIndex → schedule name 맵
+    // rowIndex → schedule name 맵 — 실제 "과제"(단독 task 또는 has_assignment 강의)만 대상으로 삼는다.
+    // 웰컴런치처럼 완료 체크는 되어있어도 과제가 아닌 강의가 섞여 나오는 걸 막기 위함
+    // (다른 곳의 taskRows 정의: /api/completions와 동일한 기준)
     const scheduleMap: Record<number, string> = {}
-    scheduleRows.forEach(r => { scheduleMap[r.rowIndex] = r.name })
+    scheduleRows
+      .filter(r => r.type === 'task' || r.has_assignment)
+      .forEach(r => { scheduleMap[r.rowIndex] = r.name })
 
     // email → name 맵 (Intern만)
     const emailToName: Record<string, string> = {}
@@ -40,7 +44,8 @@ export async function GET() {
       if (!c.submissionUrl) continue
       const name = emailToName[c.email.toLowerCase()]
       if (!name) continue
-      const scheduleName = scheduleMap[c.scheduleRowIndex] || `항목 #${c.scheduleRowIndex}`
+      const scheduleName = scheduleMap[c.scheduleRowIndex]
+      if (!scheduleName) continue // 과제가 아닌 강의(웰컴런치 등)이거나 삭제된 강의 — 제출 링크 목록에서 제외
       if (!submissions[name]) submissions[name] = []
       submissions[name].push({
         rowIndex:      c.scheduleRowIndex,

@@ -355,7 +355,10 @@ export default function DashboardPage() {
                   const internTasks = taskRows.filter(t =>
                     t.job_types.includes('all') || t.job_types.includes(intern.type)
                   )
-                  const internSubCount = (submissions[intern.name] ?? []).length
+                  // 삭제된 강의(schedule에서 지워짐)에 대한 과거 제출 기록이 completions에 그대로 남아있을 수 있어,
+                  // 현재 유효한 과제 목록(internTasks)에 실제로 있는 것만 센다 — 아니면 "제출 수 > 과제 수"가 나옴
+                  const internSubCount = (submissions[intern.name] ?? [])
+                    .filter(s => internTasks.some(t => t.rowIndex === s.rowIndex)).length
                   const taskDisplay = `${internSubCount}/${internTasks.length}`
                   const taskColor = internSubCount === 0 ? 'var(--text-muted)' : internSubCount === internTasks.length ? '#059669' : '#D97706'
                   return (
